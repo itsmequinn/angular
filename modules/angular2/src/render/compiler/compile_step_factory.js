@@ -1,0 +1,32 @@
+import {List} from 'angular2/src/facade/collection';
+import {CompileStep} from 'angular2/src/render/compiler/compile_step';
+
+import {Parser} from 'angular2/change_detection';
+
+import {PropertyBindingParser} from './property_binding_parser';
+import {TextInterpolationParser} from './text_interpolation_parser';
+import {DirectiveParser} from './directive_parser';
+import {ViewSplitter} from './view_splitter';
+import {ElementBinderInheriter} from './element_binder_inheriter';
+
+
+export class CompileStepFactory {
+  createSteps(template: Template, subTaskPromises: List<Promise>):List<CompileStep> {}
+}
+
+export class DefaultStepFactory extends CompileStepFactory {
+  _parser: Parser;
+  constructor(parser: Parser) {
+    this._parser = parser;
+  }
+
+  createSteps(template: Template, subTaskPromises: List<Promise>) {
+    return [
+      new ViewSplitter(),
+      new PropertyBindingParser(this._parser),
+      new DirectiveParser(template.directiveSelectors),
+      new TextInterpolationParser(),
+      new ElementBinderInheriter()
+    ];
+  }
+}
