@@ -17,7 +17,7 @@ import {Type, isBlank, stringify, isPresent} from 'angular2/src/facade/lang';
 import {PromiseWrapper} from 'angular2/src/facade/async';
 
 import {Compiler, CompilerCache} from 'angular2/src/render/compiler/compiler';
-import {ProtoView} from 'angular2/src/render/compiler/view';
+import {ProtoView} from 'angular2/src/render/api';
 import {CompileElement} from 'angular2/src/render/compiler/compile_element';
 import {CompileStep} from 'angular2/src/render/compiler/compile_step'
 import {CompileStepFactory} from 'angular2/src/render/compiler/compile_step_factory';
@@ -32,17 +32,27 @@ export function runCompilerCommonTests() {
       return new Compiler(new MockStepFactory([new MockStep(processClosure)]), tplLoader);
     }
 
-    it('should run the steps and build the ProtoView of the root element', () => {
-      var rootProtoView = new ProtoView(null, null, null);
+    iit('should run the steps and build the ProtoView of the root element', () => {
       var compiler = createCompiler((parent, current, control) => {
-        current.inheritedProtoView = rootProtoView;
+        current.inheritedProtoView.bindVariable('a', 'b');
       });
-      compiler.compile(new Template({
+      var protoView = compiler.compile(new Template({
         inline: '<div></div>'
-      }).then( (protoView) => {
-        expect(protoView).toBe(rootProtoView);
-        async.done();
+      }));
+      expect(protoView.variableBindings).toEqual(MapWrapper.createFromStringMap({
+        'a': 'b'
+      }));
+    });
+
+    it('should save the component id into the ProtoView', () => {
+      var compiler = createCompiler((parent, current, control) => {
+        current.inheritedProtoView.bindVariable('a', 'b');
       });
+      var protoView = compiler.compile(new Template({
+        id: 'someId',
+        inline: '<div></div>'
+      }));
+      expect(protoView.componentId).toBe('someId');
     });
 
     it('should use the inline template and compile in sync', () => {

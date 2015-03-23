@@ -4,17 +4,16 @@ import {List, ListWrapper} from 'angular2/src/facade/collection';
 import {Template} from '../api';
 import {CompilePipeline} from './compile_pipeline';
 import {TemplateLoader} from './template_loader';
-
+import {Parser} from 'angular2/change_detection';
 import {CompileStepFactory} from './compile_step_factory';
 
 export class Compiler {
   _templateLoader: TemplateLoader;
-  _parser: Parser;
-  _compileStepFactory: CompileStepFactory;
+  _stepFactory: CompileStepFactory;
 
-  constructor(compileStepFactory: CompileStepFactory, templateLoader: TemplateLoader) {
+  constructor(templateLoader: TemplateLoader, stepFactory: CompileStepFactory) {
     this._templateLoader = templateLoader;
-    this._compileStepFactory = compileStepFactory;
+    this._stepFactory = stepFactory;
   }
 
   compile(template: Template) {
@@ -33,8 +32,8 @@ export class Compiler {
 
   // TODO(tbosch): union type return ProtoView or Promise<ProtoView>
   _compileTemplate(template: Template, tplElement) {
-    var subTaskPromises = [];
-    var pipeline = new CompilePipeline(this._compileStepFactory.createSteps(template, subTaskPromises));
+    var stylePromises = [];
+    var pipeline = new CompilePipeline(this._stepFactory.createSteps(template, stylePromises));
     var compileElements;
 
     // TODOz uncomment try/catch again
@@ -44,12 +43,13 @@ export class Compiler {
     //   return PromiseWrapper.reject(ex);
     // }
 
-    var protoView = compileElements[0].inheritedProtoView.setComponentId(template.id).build();
+    var protoView = compileElements[0].inheritedProtoView
+      .setComponentId(template.id).build();
 
-    if (subTaskPromises.length > 0) {
+    if (stylePromises.length > 0) {
       // The protoView is ready after all asynchronous styles are ready
       var syncProtoView = protoView;
-      protoView = PromiseWrapper.all(subTaskPromises).then((_) => syncProtoView);
+      protoView = PromiseWrapper.all(stylePromises).then((_) => syncProtoView);
     }
 
     return protoView;
