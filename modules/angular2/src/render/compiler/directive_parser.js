@@ -7,17 +7,21 @@ import {CompileStep} from './compile_step';
 import {CompileElement} from './compile_element';
 import {CompileControl} from './compile_control';
 
+import {DirectiveMetadata} from '../api';
+
 /**
  * Parses the directives on a single element. Assumes ViewSplitter has already created
  * <template> elements for template directives.
  */
 export class DirectiveParser extends CompileStep {
   _selectorMatcher:SelectorMatcher;
-  constructor(directiveSelectors:List<string>) {
+  _directives:List<DirectiveMetadata>;
+  constructor(directives:List<DirectiveMetadata>) {
     super();
     this._selectorMatcher = new SelectorMatcher();
-    for (var i=0; i<directiveSelectors.length; i++) {
-      var selector = CssSelector.parse(directiveSelectors[i]);
+    this._directives = directives;
+    for (var i=0; i<directives.length; i++) {
+      var selector = CssSelector.parse(directives[i]);
       this._selectorMatcher.addSelectable(selector, i);
     }
   }
@@ -37,12 +41,10 @@ export class DirectiveParser extends CompileStep {
       cssSelector.addAttribute(attrName, attrValue);
     });
 
-    // Note: We assume that the ViewSplitter already did its work, i.e. template directive should
-    // only be present on <template> elements any more!
-    var isTemplateElement = DOM.isTemplateElement(current.element);
-
     this._selectorMatcher.match(cssSelector, (selector, directiveIndex) => {
       current.bindElement().addDirective(directiveIndex);
+      var directive = this._directives[directiveIndex];
+      current.compileChildren = current.compileChildren && directive.compileChildren;
     });
   }
 }

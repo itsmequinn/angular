@@ -7,12 +7,17 @@ import {CompileStep} from './compile_step';
 import {CompileElement} from './compile_element';
 import {CompileControl} from './compile_control';
 
-import {isInterpolation} from '../util';
-
 /**
  * Parses interpolations in direct text child nodes of the current element.
  */
 export class TextInterpolationParser extends CompileStep {
+  _parser:Parser;
+
+  constructor(parser:Parser) {
+    super();
+    this._parser = parser;
+  }
+
   process(parent:CompileElement, current:CompileElement, control:CompileControl) {
     if (!current.compileChildren || current.ignoreBindings) {
       return;
@@ -23,9 +28,10 @@ export class TextInterpolationParser extends CompileStep {
       var node = childNodes[i];
       if (DOM.isTextNode(node)) {
         var text = DOM.nodeValue(node);
-        if (isInterpolation(text)) {
+        var expr = this._parser.parseInterpolation(text, current.elementDescription);
+        if (isPresent(expr)) {
           DOM.setText(node, ' ');
-          current.bindElement().bindText(i, text);
+          current.bindElement().bindText(i, expr);
         }
       }
     }

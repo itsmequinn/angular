@@ -18,7 +18,7 @@ export class CompileElement {
   _classList:List;
   isViewRoot:boolean;
   inheritedProtoView:ProtoViewBuilder;
-  distanceToParentBinder:number;
+  distanceToInheritedBinder:number;
   inheritedElementBinder:ElementBinderBuilder;
   compileChildren: boolean;
   ignoreBindings: boolean;
@@ -35,7 +35,7 @@ export class CompileElement {
     // inherited down to children if they don't have
     // an own elementBinder
     this.inheritedElementBinder = null;
-    this.distanceToParentBinder = 0;
+    this.distanceToInheritedBinder = 0;
     this.compileChildren = true;
     // set to true to ignore all the bindings on the element
     this.ignoreBindings = false;
@@ -50,8 +50,13 @@ export class CompileElement {
   }
 
   bindElement() {
-    if (isBlank(this.inheritedElementBinder)) {
+    if (isBlank(this.inheritedElementBinder) || this.distanceToInheritedBinder > 0) {
+      var parentBinder = this.inheritedElementBinder;
       this.inheritedElementBinder = this.inheritedProtoView.bindElement(this.element, this.elementDescription);
+      if (isPresent(parentBinder)) {
+        this.inheritedElementBinder.setParent(parentBinder, this.distanceToInheritedBinder);
+      }
+      this.distanceToInheritedBinder = 0;
     }
     return this.inheritedElementBinder;
   }

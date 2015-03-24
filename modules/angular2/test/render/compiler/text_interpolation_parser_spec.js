@@ -1,15 +1,15 @@
 import {describe, beforeEach, expect, it, iit, ddescribe, el} from 'angular2/test_lib';
-import {TextInterpolationParser} from 'angular2/src/core/compiler/pipeline/text_interpolation_parser';
-import {CompilePipeline} from 'angular2/src/core/compiler/pipeline/compile_pipeline';
-import {MapWrapper} from 'angular2/src/facade/collection';
+import {TextInterpolationParser} from 'angular2/src/render/compiler/text_interpolation_parser';
+import {CompilePipeline} from 'angular2/src/render/compiler/compile_pipeline';
+import {MapWrapper, ListWrapper} from 'angular2/src/facade/collection';
 import {Lexer, Parser} from 'angular2/change_detection';
-import {CompileElement} from 'angular2/src/core/compiler/pipeline/compile_element';
-import {CompileStep} from 'angular2/src/core/compiler/pipeline/compile_step'
-import {CompileControl} from 'angular2/src/core/compiler/pipeline/compile_control';
+import {CompileElement} from 'angular2/src/render/compiler/compile_element';
+import {CompileStep} from 'angular2/src/render/compiler/compile_step'
+import {CompileControl} from 'angular2/src/render/compiler/compile_control';
 import {IgnoreChildrenStep} from './pipeline_spec';
 
 export function main() {
-  describe('TextInterpolationParser', () => {
+  ddescribe('TextInterpolationParser', () => {
     function createPipeline(ignoreBindings = false) {
       return new CompilePipeline([
         new MockStep((parent, current, control) => { current.ignoreBindings = ignoreBindings; }),
@@ -18,47 +18,54 @@ export function main() {
       ]);
     }
 
+    function process(element, ignoreBindings = false) {
+      return ListWrapper.map(
+        createPipeline(ignoreBindings).process(element),
+        (compileElement) => compileElement.inheritedElementBinder
+      );
+    }
+
+    function assertTextBinding(elementBinder, bindingIndex, nodeIndex, expression) {
+      expect(elementBinder.textBindings[bindingIndex].source).toEqual(expression);
+      expect(elementBinder.textBindingIndices[bindingIndex]).toEqual(nodeIndex);
+    }
+
     it('should not look for text interpolation when ignoreBindings is true', () => {
-      var results = createPipeline(true).process(el('<div>{{expr1}}<span></span>{{expr2}}</div>'));
-      expect(results[0].textNodeBindings).toBe(null);
+      var results = process(el('<div>{{expr1}}<span></span>{{expr2}}</div>'), true);
+      expect(results[0]).toEqual(null);
     });
 
     it('should find text interpolation in normal elements', () => {
-      var results = createPipeline().process(el('<div>{{expr1}}<span></span>{{expr2}}</div>'));
-      var bindings = results[0].textNodeBindings;
-      expect(MapWrapper.get(bindings, 0).source).toEqual("{{expr1}}");
-      expect(MapWrapper.get(bindings, 2).source).toEqual("{{expr2}}");
+      var result = process(el('<div>{{expr1}}<span></span>{{expr2}}</div>'))[0];
+      assertTextBinding(result, 0, 0, "{{expr1}}");
+      assertTextBinding(result, 1, 2, "{{expr2}}");
     });
 
     it('should find text interpolation in template elements', () => {
-      var results = createPipeline().process(el('<template>{{expr1}}<span></span>{{expr2}}</template>'));
-      var bindings = results[0].textNodeBindings;
-      expect(MapWrapper.get(bindings, 0).source).toEqual("{{expr1}}");
-      expect(MapWrapper.get(bindings, 2).source).toEqual("{{expr2}}");
+      var result = process(el('<template>{{expr1}}<span></span>{{expr2}}</template>'))[0];
+      assertTextBinding(result, 0, 0, "{{expr1}}");
+      assertTextBinding(result, 1, 2, "{{expr2}}");
     });
 
     it('should allow multiple expressions', () => {
-      var results = createPipeline().process(el('<div>{{expr1}}{{expr2}}</div>'));
-      var bindings = results[0].textNodeBindings;
-      expect(MapWrapper.get(bindings, 0).source).toEqual("{{expr1}}{{expr2}}");
+      var result = process(el('<div>{{expr1}}{{expr2}}</div>'))[0];
+      assertTextBinding(result, 0, 0, "{{expr1}}{{expr2}}");
     });
 
     it('should not interpolate when compileChildren is false', () => {
-      var results = createPipeline().process(el('<div>{{included}}<span ignore-children>{{excluded}}</span></div>'));
-      var bindings = results[0].textNodeBindings;
-      expect(MapWrapper.get(bindings, 0).source).toEqual("{{included}}");
-      expect(results[1].textNodeBindings).toBe(null);
+      var results = process(el('<div>{{included}}<span ignore-children>{{excluded}}</span></div>'));
+      assertTextBinding(results[0], 0, 0, "{{included}}");
+      expect(results[1]).toBe(results[0]);
     });
 
     it('should allow fixed text before, in between and after expressions', () => {
-      var results = createPipeline().process(el('<div>a{{expr1}}b{{expr2}}c</div>'));
-      var bindings = results[0].textNodeBindings;
-      expect(MapWrapper.get(bindings, 0).source).toEqual("a{{expr1}}b{{expr2}}c");
+      var result = process(el('<div>a{{expr1}}b{{expr2}}c</div>'))[0];
+      assertTextBinding(result, 0, 0, "a{{expr1}}b{{expr2}}c");
     });
 
     it('should escape quotes in fixed parts', () => {
-      var results = createPipeline().process(el("<div>'\"a{{expr1}}</div>"));
-      expect(MapWrapper.get(results[0].textNodeBindings, 0).source).toEqual("'\"a{{expr1}}");
+      var result = process(el("<div>'\"a{{expr1}}</div>"))[0];
+      assertTextBinding(result, 0, 0, "'\"a{{expr1}}");
     });
   });
 }

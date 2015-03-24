@@ -2,6 +2,8 @@ import {isPresent} from 'angular2/src/facade/lang';
 import {ListWrapper, MapWrapper} from 'angular2/src/facade/collection';
 import {DOM} from 'angular2/src/dom/dom_adapter';
 
+import {ASTWithSource} from 'angular2/change_detection';
+
 import {ProtoView} from './proto_view';
 import {ElementBinder} from './element_binder';
 import {ShadowDomStrategy} from '../shadow_dom/shadow_dom_strategy';
@@ -34,7 +36,12 @@ export class ProtoViewBuilder {
   }
 
   bindVariable(name, value) {
-    MapWrapper.set(this.variableBindings, name, value);
+    // Store the variable map from value to variable, reflecting how it will be used later by
+    // View. When a local is set to the view, a lookup for the variable name will take place keyed
+    // by the "value", or exported identifier. For example, ng-repeat sets a view local of "index".
+    // When this occurs, a lookup keyed by "index" must occur to find if there is a var referencing
+    // it.
+    MapWrapper.set(this.variableBindings, value, name);
   }
 
   setInstantiateInPlace(value) {
@@ -51,6 +58,13 @@ export class ProtoViewBuilder {
 
     var apiElementBinders = [];
     ListWrapper.forEach(this.elements, (ebb) => {
+      var apiDirectiveBinders = ListWrapper.map(ebb.directives, (db) => {
+        return new api.DirectiveBinder({
+          directiveIndex: db.directiveIndex,
+          propertyBindings: db.propertyBindings,
+          eventBindings: db.eventBindings
+        });
+      });
       var nestedProtoView =
           isPresent(ebb.nestedProtoView) ? ebb.nestedProtoView.build() : null;
       var parentIndex = isPresent(ebb.parent) ? ebb.parent.index : -1;
@@ -58,11 +72,10 @@ export class ProtoViewBuilder {
       ListWrapper.push(apiElementBinders, new api.ElementBinder({
         index: ebb.index, parentIndex:parentIndex, distanceToParent:ebb.distanceToParent,
         parentWithDirectivesIndex: parentWithDirectivesIndex, distanceToParentWithDirectives: ebb.distanceToParentWithDirectives,
-        directiveIndices: ebb.directiveIndices,
+        directives: apiDirectiveBinders,
         nestedProtoView: nestedProtoView,
-        elementDescription: ebb.elementDescription, initAttrs: ebb.initAttrs,
         propertyBindings: ebb.propertyBindings, variableBindings: ebb.variableBindings,
-        eventBindings: ebb.eventBindings, propertyInterpolations: ebb.propertyInterpolations,
+        eventBindings: ebb.eventBindings,
         textBindings: ebb.textBindings
       }));
       ListWrapper.push(renderElementBinders, new ElementBinder({
@@ -91,20 +104,13 @@ export class ElementBinderBuilder {
   distanceToParent:number;
   parentWithDirectives:ElementBinderBuilder;
   distanceToParentWithDirectives:number;
-  directiveIndices:List<number>;
+  directives:List<DirectiveBuilder>;
   nestedProtoView:ProtoViewBuilder;
-  elementDescription:string;
-  // attributes of the element that are not part of bindings.
-  // E.g. they are used to initialize directive properties
-  initAttrs:Map<string, string>;
-  propertyBindings: Map<string, string>;
-  // Mapping from property name to interpolation expression
-  propertyInterpolations: Map<string, string>;
+  propertyBindings: Map<string, ASTWithSource>;
   variableBindings: Map<string, string>;
-  eventBindings: Map<string, string>;
-  // Mapping from text node index to and interpolation expression
+  eventBindings: Map<string, ASTWithSource>;
   textBindingIndices: List<number>;
-  textBindings: List<string>;
+  textBindings: List<ASTWithSource>;
   contentTagSelector:string;
 
   constructor(index, element, description) {
@@ -114,12 +120,9 @@ export class ElementBinderBuilder {
     this.distanceToParent = 0;
     this.parentWithDirectives = null;
     this.distanceToParentWithDirectives = 0;
-    this.directiveIndices = [];
+    this.directives = [];
     this.nestedProtoView = null;
-    this.elementDescription = description;
-    this.initAttrs = MapWrapper.create();
     this.propertyBindings = MapWrapper.create();
-    this.propertyInterpolations = MapWrapper.create();
     this.variableBindings = MapWrapper.create();
     this.eventBindings = MapWrapper.create();
     this.textBindings = [];
@@ -144,8 +147,10 @@ export class ElementBinderBuilder {
     return this;
   }
 
-  addDirective(directiveIndex:number) {
-    ListWrapper.push(this.directiveIndices, directiveIndex);
+  bindDirective(directiveIndex:number):DirectiveBuilder {
+    var directive = new DirectiveBuilder(directiveIndex);
+    ListWrapper.push(this.directives, directive);
+    return directive;
   }
 
   bindNestedProtoView():ProtoViewBuilder {
@@ -156,26 +161,24 @@ export class ElementBinderBuilder {
     return this.nestedProtoView;
   }
 
-  bindInitAttr(name, value) {
-    MapWrapper.set(this.initAttrs, name, value);
-  }
-
   bindProperty(name, expression) {
     MapWrapper.set(this.propertyBindings, name, expression);
   }
 
-  bindPropertyInterpolation(name, expression) {
-    MapWrapper.set(this.propertyInterpolations, name, expression);
-  }
-
   bindVariable(name, value) {
+
     // When current is a view root, the variable bindings are set to the *nested* proto view.
     // The root view conceptually signifies a new "block scope" (the nested view), to which
     // the variables are bound.
     if (isPresent(this.nestedProtoView)) {
       this.nestedProtoView.bindVariable(name, value);
     } else {
-      MapWrapper.set(this.variableBindings, name, value);
+      // Store the variable map from value to variable, reflecting how it will be used later by
+      // View. When a local is set to the view, a lookup for the variable name will take place keyed
+      // by the "value", or exported identifier. For example, ng-repeat sets a view local of "index".
+      // When this occurs, a lookup keyed by "index" must occur to find if there is a var referencing
+      // it.
+      MapWrapper.set(this.variableBindings, value, name);
     }
   }
 
@@ -190,5 +193,25 @@ export class ElementBinderBuilder {
 
   setContentTagSelector(value:string) {
     this.contentTagSelector = value;
+  }
+}
+
+export class DirectiveBuilder {
+  directiveIndex:number;
+  propertyBindings: Map<string, ASTWithSource>;
+  eventBindings: Map<string, ASTWithSource>;
+
+  constructor(directiveIndex) {
+    this.directiveIndex = directiveIndex;
+    this.propertyBindings = MapWrapper.create();
+    this.eventBindings = MapWrapper.create();
+  }
+
+  bindProperty(name, expression) {
+    MapWrapper.set(this.propertyBindings, name, expression);
+  }
+
+  bindEvent(name, expression) {
+    MapWrapper.set(this.eventBindings, name, expression);
   }
 }

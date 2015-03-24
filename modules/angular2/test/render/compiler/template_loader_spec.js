@@ -11,15 +11,15 @@ import {
   xit,
 } from 'angular2/test_lib';
 import {DOM} from 'angular2/src/dom/dom_adapter';
-import {TemplateLoader} from 'angular2/src/core/compiler/template_loader';
-import {UrlResolver} from 'angular2/src/core/compiler/url_resolver';
+import {TemplateLoader} from 'angular2/src/render/compiler/template_loader';
+import {UrlResolver} from 'angular2/src/services/url_resolver';
 
-import {Template} from 'angular2/src/core/annotations/template';
+import {Template} from 'angular2/src/render/api';
 import {PromiseWrapper} from 'angular2/src/facade/async';
 import {XHRMock} from 'angular2/src/mock/xhr_mock';
 
 export function main() {
-  describe('TemplateLoader', () => {
+  ddescribe('TemplateLoader', () => {
     var loader, xhr;
 
     beforeEach(() => {
@@ -34,8 +34,7 @@ export function main() {
 
     it('should load templates through XHR', inject([AsyncTestCompleter], (async) => {
       xhr.expect('base/foo', 'xhr template');
-      var template = new Template({url: '/foo'});
-      loader.setBaseUrl(template, 'base');
+      var template = new Template({absUrl: 'base/foo'});
       loader.load(template).then((el) => {
         expect(DOM.content(el)).toHaveText('xhr template');
         async.done();
@@ -46,8 +45,7 @@ export function main() {
     it('should cache template loaded through XHR', inject([AsyncTestCompleter], (async) => {
       var firstEl;
       xhr.expect('base/foo', 'xhr template');
-      var template = new Template({url: '/foo'});
-      loader.setBaseUrl(template, 'base');
+      var template = new Template({absUrl: 'base/foo'});
       loader.load(template)
         .then((el) => {
           firstEl = el;
@@ -62,15 +60,14 @@ export function main() {
     }));
 
     it('should throw when no template is defined', () => {
-      var template =  new Template({inline: null, url: null});
+      var template =  new Template({inline: null, absUrl: null});
       expect(() => loader.load(template))
         .toThrowError('Templates should have either their url or inline property set');
     });
 
     it('should return a rejected Promise when xhr loading fails', inject([AsyncTestCompleter], (async) => {
       xhr.expect('base/foo', null);
-      var template = new Template({url: '/foo'});
-      loader.setBaseUrl(template, 'base');
+      var template = new Template({absUrl: 'base/foo'});
       PromiseWrapper.then(loader.load(template),
         function(_) { throw 'Unexpected response'; },
         function(error) {

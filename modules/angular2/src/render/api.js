@@ -1,4 +1,17 @@
 import {List, Map} from 'angular2/src/facade/collection';
+import {ASTWithSource} from 'angular2/change_detection';
+
+// Note: we are already parsing expressions on the render side:
+// - this makes the ElementBinders more compact
+//   (e.g. no need to distinguish interpolations from regular expressions from literals)
+// - allows later to store event meta data that defines the data
+//   that should be returned to the application when an even thappens
+// - we need the parse at least for the `template` attribute to match
+//   directives in it
+// - render compiler would read all syntax, application
+//   would be syntax independent
+// - render compiler is not on the critical path as
+//   its output will be stored in precompiled templates.
 
 export class ElementBinder {
   index:number;
@@ -6,40 +19,43 @@ export class ElementBinder {
   distanceToParent:number;
   parentWithDirectivesIndex:number;
   distanceToParentWithDirectives:number;
-  directiveIndices:List<number>;
+  directives:List<DirectiveBinder>;
   nestedProtoView:ProtoView;
-  elementDescription:string;
-  // attributes of the element that are not part of bindings.
-  // E.g. they are used to initialize directive properties
-  initAttrs:Map<string, string>;
-  propertyBindings: Map<string, string>;
-  // Mapping from property name to interpolation expression
-  propertyInterpolations: Map<string, string>;
-  variableBindings: Map<string, string>;
-  eventBindings: Map<string, string>;
-  // List of text expression strings
-  textBindings: List<string>;
+  propertyBindings: Map<string, ASTWithSource>;
+  variableBindings: Map<string, ASTWithSource>;
+  eventBindings: Map<string, ASTWithSource>;
+  textBindings: List<ASTWithSource>;
 
   constructor({
     index, parentIndex, distanceToParent, parentWithDirectivesIndex,
-    distanceToParentWithDirectives, directiveIndices, nestedProtoView,
-    elementDescription, initAttrs, propertyBindings, variableBindings,
-    eventBindings, propertyInterpolations, textBindings
+    distanceToParentWithDirectives, directives, nestedProtoView,
+    propertyBindings, variableBindings,
+    eventBindings, textBindings
   }) {
     this.index = index;
     this.parentIndex = parentIndex;
     this.distanceToParent = distanceToParent;
     this.parentWithDirectivesIndex = parentWithDirectivesIndex;
     this.distanceToParentWithDirectives = distanceToParentWithDirectives;
-    this.directiveIndices = directiveIndices;
+    this.directives = directives;
     this.nestedProtoView = nestedProtoView;
-    this.elementDescription = elementDescription;
-    this.initAttrs = initAttrs;
     this.propertyBindings = propertyBindings;
     this.variableBindings = variableBindings;
     this.eventBindings = eventBindings;
-    this.propertyInterpolations = propertyInterpolations;
     this.textBindings = textBindings;
+  }
+}
+
+export class DirectiveBinder {
+  directiveIndex:number;
+  propertyBindings: Map<string, ASTWithSource>;
+  eventBindings: Map<string, ASTWithSource>;
+  constructor({
+    directiveIndex, propertyBindings, eventBindings
+  }) {
+    this.directiveIndex = directiveIndex;
+    this.propertyBindings = propertyBindings;
+    this.eventBindings = eventBindings;
   }
 }
 
@@ -52,6 +68,19 @@ export class ProtoView {
     this.render = render;
     this.elementBinders = elementBinders;
     this.variableBindings = variableBindings;
+  }
+}
+
+export class DirectiveMetadata {
+  selector:string;
+  compileChildren:boolean;
+  events:Map<string, string>;
+  bind:Map<string, string>;
+  constructor(selector, compileChildren, events, bind) {
+    this.selector = selector;
+    this.compileChildren = compileChildren;
+    this.events = events;
+    this.bind = bind;
   }
 }
 
@@ -74,12 +103,12 @@ export class Template {
   id: string;
   absUrl: string;
   inline: string;
-  directiveSelectors: List<string>;
-  constructor({id, absUrl, inline, directiveSelectors}) {
+  directives: List<DirectiveMetadata>;
+  constructor({id, absUrl, inline, directives}) {
     this.id = id;
     this.absUrl = absUrl;
     this.inline = inline;
-    this.directiveSelectors = directiveSelectors;
+    this.directives = directives;
   }
 }
 

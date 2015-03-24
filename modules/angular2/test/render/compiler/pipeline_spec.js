@@ -3,10 +3,12 @@ import {ListWrapper, List, MapWrapper} from 'angular2/src/facade/collection';
 import {DOM} from 'angular2/src/dom/dom_adapter';
 import {isPresent, NumberWrapper, StringWrapper} from 'angular2/src/facade/lang';
 
-import {CompilePipeline} from 'angular2/src/core/compiler/pipeline/compile_pipeline';
-import {CompileElement} from 'angular2/src/core/compiler/pipeline/compile_element';
-import {CompileStep} from 'angular2/src/core/compiler/pipeline/compile_step'
-import {CompileControl} from 'angular2/src/core/compiler/pipeline/compile_control';
+import {CompilePipeline} from 'angular2/src/render/compiler/compile_pipeline';
+import {CompileElement} from 'angular2/src/render/compiler/compile_element';
+import {CompileStep} from 'angular2/src/render/compiler/compile_step'
+import {CompileControl} from 'angular2/src/render/compiler/compile_control';
+
+import {ProtoViewBuilder} from 'angular2/src/render/view/proto_view_builder';
 
 export function main() {
   describe('compile_pipeline', () => {
@@ -31,6 +33,45 @@ export function main() {
         expect(step0Log).toEqual(['1', '1<2']);
         expect(resultIdLog(results)).toEqual(['1', '2']);
       });
+    });
+
+    it('should inherit protoViewBuilders to children', () => {
+      var element = el('<div><div><span viewroot><span></span></span></div></div>');
+      var pipeline = new CompilePipeline([new MockStep((parent, current, control) => {
+        if (isPresent(DOM.getAttribute(current.element, 'viewroot'))) {
+          current.inheritedProtoView = new ProtoViewBuilder(current.element);
+        }
+      })]);
+      var results = pipeline.process(element);
+      expect(results[0].inheritedProtoView).toBe(results[1].inheritedProtoView);
+      expect(results[2].inheritedProtoView).toBe(results[3].inheritedProtoView);
+    });
+
+    it('should inherit elementBinderBuilders to children', () => {
+      var element = el('<div bind><div><span bind><span></span></span></div></div>');
+      var pipeline = new CompilePipeline([new MockStep((parent, current, control) => {
+        if (isPresent(DOM.getAttribute(current.element, 'bind'))) {
+          current.bindElement();
+        }
+      })]);
+      var results = pipeline.process(element);
+      expect(results[0].inheritedElementBinder).toBe(results[1].inheritedElementBinder);
+      expect(results[2].inheritedElementBinder).toBe(results[3].inheritedElementBinder);
+    });
+
+    it('should calculate distanceToParent / parent correctly', () => {
+      var element = el('<div bind><div bind></div><div><div bind></div></div></div>');
+      var pipeline = new CompilePipeline([new MockStep((parent, current, control) => {
+        if (isPresent(DOM.getAttribute(current.element, 'bind'))) {
+          current.bindElement();
+        }
+      })]);
+      var results = pipeline.process(element);
+      expect(results[0].inheritedElementBinder.distanceToParent).toBe(0);
+      expect(results[1].inheritedElementBinder.distanceToParent).toBe(1);
+      expect(results[3].inheritedElementBinder.distanceToParent).toBe(2);
+      expect(results[1].inheritedElementBinder.parent).toBe(results[0].inheritedElementBinder);
+      expect(results[3].inheritedElementBinder.parent).toBe(results[0].inheritedElementBinder);
     });
 
     describe('control.addParent', () => {

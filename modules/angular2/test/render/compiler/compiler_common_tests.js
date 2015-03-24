@@ -17,26 +17,34 @@ import {Type, isBlank, stringify, isPresent} from 'angular2/src/facade/lang';
 import {PromiseWrapper} from 'angular2/src/facade/async';
 
 import {Compiler, CompilerCache} from 'angular2/src/render/compiler/compiler';
-import {ProtoView} from 'angular2/src/render/api';
+import {ProtoView, Template} from 'angular2/src/render/api';
 import {CompileElement} from 'angular2/src/render/compiler/compile_element';
 import {CompileStep} from 'angular2/src/render/compiler/compile_step'
 import {CompileStepFactory} from 'angular2/src/render/compiler/compile_step_factory';
 import {CompileControl} from 'angular2/src/render/compiler/compile_control';
 import {TemplateLoader} from 'angular2/src/render/compiler/template_loader';
 
-export function runCompilerCommonTests() {
-  xdescribe('compiler', function() {
+import {UrlResolver} from 'angular2/src/services/url_resolver';
 
-    function createCompiler(processClosure) {
-      var tplLoader =  new FakeTemplateLoader();
-      return new Compiler(new MockStepFactory([new MockStep(processClosure)]), tplLoader);
+export function runCompilerCommonTests() {
+  describe('compiler', function() {
+    var mockStepFactory;
+
+    function createCompiler(processClosure, urlData = null) {
+      if (isBlank(urlData)) {
+        urlData = MapWrapper.create();
+      }
+      var tplLoader =  new FakeTemplateLoader(urlData);
+      mockStepFactory = new MockStepFactory([new MockStep(processClosure)]);
+      return new Compiler(mockStepFactory, tplLoader);
     }
 
-    iit('should run the steps and build the ProtoView of the root element', () => {
+    it('should run the steps and build the ProtoView of the root element', () => {
       var compiler = createCompiler((parent, current, control) => {
-        current.inheritedProtoView.bindVariable('a', 'b');
+        current.inheritedProtoView.bindVariable('b', 'a');
       });
       var protoView = compiler.compile(new Template({
+        id: 'someComponent',
         inline: '<div></div>'
       }));
       expect(protoView.variableBindings).toEqual(MapWrapper.createFromStringMap({
@@ -44,32 +52,45 @@ export function runCompilerCommonTests() {
       }));
     });
 
-    it('should save the component id into the ProtoView', () => {
-      var compiler = createCompiler((parent, current, control) => {
-        current.inheritedProtoView.bindVariable('a', 'b');
-      });
+    it('should save the component id into the render ProtoView', () => {
+      var compiler = createCompiler(EMPTY_STEP);
       var protoView = compiler.compile(new Template({
         id: 'someId',
         inline: '<div></div>'
       }));
-      expect(protoView.componentId).toBe('someId');
+      expect(protoView.render.componentId).toBe('someId');
     });
 
     it('should use the inline template and compile in sync', () => {
-      var compiler = createCompiler( (parent, current, control) => {
-        current.inheritedProtoView = new ProtoView(current.element, null, null);
-      });
-      var protoView = compiler.compile(MainComponent);
-      expect(DOM.getInnerHTML(protoView.element)).toEqual('inline component');
-      async.done();
+      var compiler = createCompiler(EMPTY_STEP);
+      var protoView = compiler.compile(new Template({
+        id: 'someId',
+        inline: 'inline component'
+      }));
+      expect(DOM.getInnerHTML(protoView.render.element)).toEqual('inline component');
     });
 
     it('should load url templates', inject([AsyncTestCompleter], (async) => {
-      var compiler = createCompiler( (parent, current, control) => {
-        current.inheritedProtoView = new ProtoView(current.element, null, null);
+      var urlData = MapWrapper.createFromStringMap({
+        'someUrl': 'url component'
       });
-      compiler.compile(MainComponent).then( (protoView) => {
-        expect(DOM.getInnerHTML(protoView.element)).toEqual('inline component');
+      var compiler = createCompiler(EMPTY_STEP, urlData);
+      compiler.compile(new Template({
+        id: 'someId',
+        absUrl: 'someUrl'
+      })).then( (protoView) => {
+        expect(DOM.getInnerHTML(protoView.render.element)).toEqual('url component');
+        async.done();
+      });
+    }));
+
+    it('should report loading errors', inject([AsyncTestCompleter], (async) => {
+      var compiler = createCompiler(EMPTY_STEP, MapWrapper.create());
+      PromiseWrapper.catchError(compiler.compile(new Template({
+        id: 'someId',
+        absUrl: 'someUrl'
+      })), (e) => {
+        expect(e.message).toContain(`Failed to load the template "someId"`);
         async.done();
       });
     }));
@@ -80,15 +101,16 @@ export function runCompilerCommonTests() {
       var completer = PromiseWrapper.completer();
 
       var compiler = createCompiler( (parent, current, control) => {
-        var protoView = new ProtoView(current.element, null, null);
-        ListWrapper.push(protoView.stylePromises, completer.promise.then((_) => {
+        ListWrapper.push(mockStepFactory.subTaskPromises, completer.promise.then((_) => {
           subTasksCompleted = true;
         }));
-        current.inheritedProtoView = protoView;
       });
 
       // It should always return a Promise because the subtask is async
-      var pvPromise = compiler.compile(MainComponent);
+      var pvPromise = compiler.compile(new Template({
+        id: 'someId',
+        inline: 'some component'
+      }));
       expect(pvPromise).toBePromise();
       expect(subTasksCompleted).toEqual(false);
 
@@ -106,10 +128,13 @@ export function runCompilerCommonTests() {
 
 class MockStepFactory extends CompileStepFactory {
   steps:List<CompileStep>;
+  subTaskPromises:List<Promise>;
   constructor(steps) {
     this.steps = steps;
   }
-  createSteps() {
+  createSteps(template, subTaskPromises) {
+    this.subTaskPromises = subTaskPromises;
+    ListWrapper.forEach(this.subTaskPromises, (p) => ListWrapper.push(subTaskPromises, p) );
     return steps;
   }
 }
@@ -125,9 +150,17 @@ class MockStep extends CompileStep {
   }
 }
 
+var EMPTY_STEP = (parent, current, control) => {
+  if (isPresent(parent)) {
+    current.inheritedProtoView = parent.inheritedProtoView;
+  }
+};
+
 class FakeTemplateLoader extends TemplateLoader {
-  constructor() {
+  _urlData: Map<string, string>;
+  constructor(urlData) {
     super(null, new UrlResolver());
+    this._urlData = urlData;
   }
 
   load(template: Template) {
@@ -135,11 +168,13 @@ class FakeTemplateLoader extends TemplateLoader {
       return DOM.createTemplate(template.inline);
     }
 
-    if (isPresent(template.url)) {
-      var tplElement = DOM.createTemplate(template.url);
-      return PromiseWrapper.resolve(tplElement);
+    if (isPresent(template.absUrl)) {
+      var content = this._urlData[template.absUrl];
+      if (isPresent(content)) {
+        return PromiseWrapper.resolve(DOM.createTemplate(content));
+      }
     }
 
-    return PromiseWrapper.reject('Fail to load');
+    return PromiseWrapper.reject('Load failed');
   }
 }

@@ -7,9 +7,8 @@ import {CompileStep} from './compile_step';
 import {CompileElement} from './compile_element';
 import {CompileControl} from './compile_control';
 
-import {isInterpolation, dashCaseToCamelCase} from '../util';
+import {dashCaseToCamelCase} from '../util';
 
-// TODO(tbosch): Cannot make this const/final right now because of the transpiler...
 // Group 1 = "bind"
 // Group 2 = "var"
 // Group 3 = "on"
@@ -19,7 +18,7 @@ import {isInterpolation, dashCaseToCamelCase} from '../util';
 // Group 7 = "#"
 // Group 8 = identifier after "#"
 var BIND_NAME_REGEXP = RegExpWrapper.create(
-    '^(?:(?:(bind)|(var)|(on))-(.+))|\\[([^\\]]+)\\]|\\(([^\\)]+)\\)|(#)(.+)');
+    '^(?:(?:(?:(bind)|(var)|(on))-(.+))|\\[([^\\]]+)\\]|\\(([^\\)]+)\\)|(#)(.+))$');
 
 /**
  * Parses the property bindings on a single element.
@@ -45,7 +44,7 @@ export class PropertyBindingParser extends CompileStep {
       if (isPresent(bindParts)) {
         if (isPresent(bindParts[1])) {
           // match: bind-prop
-          this._bindProperty(bindParts[4], attrValue, current);
+          this._bindProperty(bindParts[4], attrValue, current, newAttrs);
         } else if (isPresent(bindParts[2]) || isPresent(bindParts[7])) {
           // match: var-name / var-name="iden" / #name / #name="iden"
           var identifier = (isPresent(bindParts[4]) && bindParts[4] !== '') ?
@@ -62,19 +61,19 @@ export class PropertyBindingParser extends CompileStep {
           // match: (event)
           this._bindEvent(bindParts[6], attrValue, current, newAttrs);
         }
-      } else if (StringWrapper.equals(attrName, 'template')) {
-        this._parseTemplateBindings(attrValue, current, newAttrs);
-      } else if (isInterpolation(attrValue)) {
-        current.bindElement().bindPropertyInterpolation(dashCaseToCamelCase(attrName), attrValue);
       } else {
-        current.bindElement().bindInitAttr(dashCaseToCamelCase(attrName), attrValue);
+        var expr = this._parser.parseInterpolation(
+          attrValue, current.elementDescription
+        );
+        if (isPresent(expr)) {
+          this._bindPropertyAst(attrName, expr, current, newAttrs);
+        }
       }
     });
 
     MapWrapper.forEach(newAttrs, (attrValue, attrName) => {
       MapWrapper.set(attrs, attrName, attrValue);
     });
-
   }
 
   _bindVariable(identifier, value, current:CompileElement, newAttrs) {
@@ -83,30 +82,27 @@ export class PropertyBindingParser extends CompileStep {
   }
 
   _bindProperty(name, expression, current:CompileElement, newAttrs) {
-    current.bindElement().bindProperty(dashCaseToCamelCase(name), expression);
-    MapWrapper.set(newAttrs, name, expression);
+    this._bindPropertyAst(
+      name,
+      this._parser.parseBinding(expression, current.elementDescription),
+      current,
+      newAttrs
+    );
+  }
+
+  _bindPropertyAst(name, ast, current:CompileElement, newAttrs) {
+    current.bindElement().bindProperty(
+      dashCaseToCamelCase(name), ast
+    );
+    MapWrapper.set(newAttrs, name, ast.source);
   }
 
   _bindEvent(name, expression, current:CompileElement, newAttrs) {
-    current.bindElement().bindEvent(dashCaseToCamelCase(name), expression);
+    current.bindElement().bindEvent(
+      dashCaseToCamelCase(name), this._parser.parseAction(expression, current.elementDescription)
+    );
     // Don't detect directives for event names for now,
     // so don't add the event name to the CompileElement.attrs
-  }
-
-  _parseTemplateBindings(templateBindings:string, current:CompileElement, newAttrs) {
-    // Note: We are using the parser only to be able to split property bindings and variable
-    // bindings apart, so that we can find directives that match
-    var bindings = this._parser.parseTemplateBindings(templateBindings, compileElement.elementDescription);
-    for (var i=0; i<bindings.length; i++) {
-      var binding = bindings[i];
-      if (binding.keyIsVar) {
-        this._bindVariable(binding.key, binding.name, current, newAttrs);
-      } else if (isPresent(binding.expression)) {
-        this._bindProperty(binding.key, binding.expression.source, current, newAttrs);
-      } else {
-        DOM.setAttribute(compileElement.element, binding.key, '');
-      }
-    }
   }
 
 }

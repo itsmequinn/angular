@@ -25,6 +25,13 @@ import {ProtoViewBuilder} from '../view/proto_view_builder';
  * which should not descend into the nested view.
  */
 export class ViewSplitter extends CompileStep {
+  _parser:Parser;
+
+  constructor(parser:Parser) {
+    super();
+    this._parser = parser;
+  }
+
   process(parent:CompileElement, current:CompileElement, control:CompileControl) {
     var attrs = current.attrs();
     var templateBindings = MapWrapper.get(attrs, 'template');
@@ -47,37 +54,31 @@ export class ViewSplitter extends CompileStep {
       }
     });
 
-    if (isBlank(parent)) {
-      current.inheritedProtoView = new ProtoViewBuilder(current.element);
-    } else {
+    if (isPresent(parent)) {
       if (DOM.isTemplateElement(current.element)) {
         if (!current.isViewRoot) {
           var viewRoot = new CompileElement(DOM.createTemplate(''));
-          var currentElement = current.element;
-
+          viewRoot.inheritedViewRoot = current.inheritedElementBinder.bindNestedProtoView();
           // viewRoot doesn't appear in the original template, so we associate
           // the current element description to get a more meaningful message in case of error
           viewRoot.elementDescription = current.elementDescription;
           viewRoot.isViewRoot = true;
-          viewRoot.inheritedProtoView = current.inheritedElementBinder.bindNestedProtoView();
 
-          this._moveChildNodes(DOM.content(currentElement), DOM.content(viewRoot.element));
+          this._moveChildNodes(DOM.content(current.element), DOM.content(viewRoot.element));
           control.addChild(viewRoot);
         }
       } if (hasTemplateBinding) {
         var newParent = new CompileElement(DOM.createTemplate(''));
+        newParent.inheritedViewRoot = current.inheritedElementBinder.bindNestedProtoView();
         // newParent doesn't appear in the original template, so we associate
         // the current element description to get a more meaningful message in case of error
         newParent.elementDescription = current.elementDescription;
-
         current.isViewRoot = true;
-        newParent.inheritedProtoView = current.inheritedElementBinder.bindNestedProtoView();
+        this._parseTemplateBindings(templateBindings, newParent);
 
         this._addParentElement(current.element, newParent.element);
         control.addParent(newParent);
         DOM.remove(current.element);
-      } else {
-        current.inheritedProtoView = parent.inheritedProtoView;
       }
     }
   }
@@ -93,5 +94,21 @@ export class ViewSplitter extends CompileStep {
   _addParentElement(currentElement, newParentElement) {
     DOM.insertBefore(currentElement, newParentElement);
     DOM.appendChild(newParentElement, currentElement);
+  }
+
+  _parseTemplateBindings(templateBindings:string, compileElement:CompileElement) {
+    var bindings = this._parser.parseTemplateBindings(templateBindings, compileElement.elementDescription);
+    for (var i=0; i<bindings.length; i++) {
+      var binding = bindings[i];
+      if (binding.keyIsVar) {
+        compileElement.addVariableBinding(binding.key, binding.name);
+        MapWrapper.set(compileElement.attrs(), binding.key, binding.name);
+      } else if (isPresent(binding.expression)) {
+        compileElement.addPropertyBinding(binding.key, binding.expression);
+        MapWrapper.set(compileElement.attrs(), binding.key, binding.expression.source);
+      } else {
+        DOM.setAttribute(compileElement.element, binding.key, '');
+      }
+    }
   }
 }

@@ -12,6 +12,10 @@ import {DirectiveMetadataReader} from 'angular2/src/core/compiler/directive_meta
 import {Lexer, Parser} from 'angular2/change_detection';
 
 export function main() {
+  // TODO(tbosch): Change directive_parser to read in
+  // init attrs as well as map property bindings
+  // to expression bindings
+
   describe('DirectiveParser', () => {
     var reader, directives;
 

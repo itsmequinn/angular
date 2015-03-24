@@ -7,7 +7,6 @@ import {PropertyBindingParser} from './property_binding_parser';
 import {TextInterpolationParser} from './text_interpolation_parser';
 import {DirectiveParser} from './directive_parser';
 import {ViewSplitter} from './view_splitter';
-import {ElementBinderInheriter} from './element_binder_inheriter';
 
 
 export class CompileStepFactory {
@@ -24,9 +23,8 @@ export class DefaultStepFactory extends CompileStepFactory {
     return [
       new ViewSplitter(),
       new PropertyBindingParser(this._parser),
-      new DirectiveParser(template.directiveSelectors),
-      new TextInterpolationParser(),
-      new ElementBinderInheriter()
+      new DirectiveParser(template.directives),
+      new TextInterpolationParser()
     ];
   }
 }

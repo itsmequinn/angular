@@ -4,6 +4,7 @@ import {DOM} from 'angular2/src/dom/dom_adapter';
 import {CompileElement} from './compile_element';
 import {CompileControl} from './compile_control';
 import {CompileStep} from './compile_step';
+import {ProtoViewBuilder} from '../view/proto_view_builder';
 
 /**
  * CompilePipeline for executing CompileSteps recursively for
@@ -17,7 +18,11 @@ export class CompilePipeline {
 
   process(rootElement, compilationCtxtDescription:string = ''):List {
     var results = ListWrapper.create();
-    this._process(results, null, new CompileElement(rootElement, compilationCtxtDescription), compilationCtxtDescription);
+    var rootCompileElement = new CompileElement(rootElement, compilationCtxtDescription);
+    rootCompileElement.inheritedProtoView = new ProtoViewBuilder(rootElement);
+    this._process(results, null, rootCompileElement,
+      compilationCtxtDescription
+    );
     return results;
   }
 
@@ -31,7 +36,11 @@ export class CompilePipeline {
         // next sibling before recursing.
         var nextNode = DOM.nextSibling(node);
         if (DOM.isElementNode(node)) {
-          this._process(results, current, new CompileElement(node, compilationCtxtDescription));
+          var childCompileElement = new CompileElement(node, compilationCtxtDescription);
+          childCompileElement.inheritedProtoView = current.inheritedProtoView;
+          childCompileElement.inheritedElementBinder = current.inheritedElementBinder;
+          childCompileElement.distanceToInheritedBinder = current.distanceToInheritedBinder+1;
+          this._process(results, current, childCompileElement);
         }
         node = nextNode;
       }
@@ -39,7 +48,7 @@ export class CompilePipeline {
 
     if (isPresent(additionalChildren)) {
       for (var i=0; i<additionalChildren.length; i++) {
-        this._process(results, depth+1, current, additionalChildren[i]);
+        this._process(results, current, additionalChildren[i]);
       }
     }
   }
