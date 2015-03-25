@@ -3,13 +3,17 @@ import {List, ListWrapper} from 'angular2/src/facade/collection';
 
 import {DOM} from 'angular2/src/dom/dom_adapter';
 
-import * as viewModule from '../../view/view';
-import * as NS from '../../compiler/compile_step';
-import {Template} from '../../api';
+import * as viewModule from '../view/view';
+import * as NS from '../compiler/compile_step';
+import {Template} from '../api';
 
 import {StyleInliner} from './style_inliner';
-import {StyleUrlResolver} from '../style_url_resolver';
+import {StyleUrlResolver} from './style_url_resolver';
 import {EmulatedUnscopedShadowDomStrategy} from './emulated_unscoped_shadow_dom_strategy';
+import {EmulatedScopedCssStep} from './emulated_scoped_css_step';
+import {ShimShadowDomStep} from './shim_shadow_dom_step';
+import {getHostAttribute, getComponentId} from './util';
+
 
 /**
  * This strategy emulates the Shadow DOM for the templates, styles **included**:
@@ -34,16 +38,16 @@ export class EmulatedScopedShadowDomStrategy extends EmulatedUnscopedShadowDomSt
   attachTemplate(el, view:viewModule.View) {
     super.attachTemplate(el, view);
 
-    var hostAttribute = _getHostAttribute(_getComponentId(view.proto.componentId));
+    var hostAttribute = getHostAttribute(getComponentId(view.proto.componentId));
     DOM.setAttribute(el, hostAttribute, '');
   }
 
   getStyleCompileStep(template: Template, stylePromises: List<Promise>): NS.CompileStep {
-    return new _EmulatedScopedCssStep(template, this._styleInliner,
-      this._styleUrlResolver, this._styleHost, stylePromises);
+    return new EmulatedScopedCssStep(template, this._styleInliner,
+      this.styleUrlResolver, this.styleHost, stylePromises);
   }
 
   getTemplateCompileStep(template: Template): NS.CompileStep {
-    return new _ShimShadowDomStep(template);
+    return new ShimShadowDomStep(template);
   }
 }

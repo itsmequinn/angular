@@ -6,7 +6,7 @@ import {CompileElement} from '../compiler/compile_element';
 import {CompileControl} from '../compiler/compile_control';
 import {Template} from '../api';
 
-import {LightDom} from './emulation/light_dom';
+import {LightDom} from './light_dom';
 
 
 var _EMPTY_STEP;

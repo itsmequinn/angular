@@ -8,8 +8,8 @@ import {reflector} from 'angular2/src/reflection/reflection';
 
 import {ViewContainer} from './view_container';
 import {ProtoView} from './proto_view';
-import {LightDom} from '../shadow_dom/emulation/light_dom';
-import {Content} from '../shadow_dom/emulation/content_tag';
+import {LightDom} from '../shadow_dom/light_dom';
+import {Content} from '../shadow_dom/content_tag';
 
 import {ShadowDomStrategy} from '../shadow_dom/shadow_dom_strategy';
 import {EventManager} from '../events/event_manager';

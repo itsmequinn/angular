@@ -10,6 +10,7 @@ import {Template} from '../api';
 import {StyleUrlResolver} from './style_url_resolver';
 import {ShadowDomStrategy} from './shadow_dom_strategy';
 import {moveViewNodesIntoParent} from './util';
+import {NativeCssStep} from './native_css_step';
 
 /**
  * This strategies uses the native Shadow DOM support.
@@ -30,6 +31,6 @@ export class NativeShadowDomStrategy extends ShadowDomStrategy {
   }
 
   getStyleCompileStep(template: Template, stylePromises: List<Promise>): NS.CompileStep {
-    return new _NativeCssStep(template.absUrl, this._styleUrlResolver);
+    return new NativeCssStep(template.absUrl, this._styleUrlResolver);
   }
 }

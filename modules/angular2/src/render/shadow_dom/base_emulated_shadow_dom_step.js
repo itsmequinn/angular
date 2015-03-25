@@ -3,10 +3,10 @@ import {MapWrapper} from 'angular2/src/facade/collection';
 
 import {DOM} from 'angular2/src/dom/dom_adapter';
 
-import * as viewModule from '../../view/view';
-import * as NS from '../../compiler/compile_step';
-import {CompileElement} from '../../compiler/compile_element';
-import {CompileControl} from '../../compiler/compile_control';
+import * as viewModule from '../view/view';
+import * as NS from '../compiler/compile_step';
+import {CompileElement} from '../compiler/compile_element';
+import {CompileControl} from '../compiler/compile_control';
 
 export class BaseEmulatedShadowDomStep extends NS.CompileStep {
   process(parent:CompileElement, current:CompileElement, control:CompileControl) {

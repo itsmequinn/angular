@@ -7,13 +7,14 @@ import {CompileControl} from '../compiler/compile_control';
 import {Template} from '../api';
 
 import {BaseEmulatedShadowDomStep} from './base_emulated_shadow_dom_step';
+import {getContentAttribute, getComponentId} from './util';
 
 export class ShimShadowDomStep extends BaseEmulatedShadowDomStep {
   _contentAttribute: string;
 
   constructor(template: Template) {
     super();
-    this._contentAttribute = _getContentAttribute(_getComponentId(template.id));
+    this._contentAttribute = getContentAttribute(getComponentId(template.id));
   }
 
 

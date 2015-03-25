@@ -4,13 +4,14 @@ import {PromiseWrapper} from 'angular2/src/facade/async';
 
 import {DOM} from 'angular2/src/dom/dom_adapter';
 
-import {CompileElement} from '../../compiler/compile_element';
-import {CompileControl} from '../../compiler/compile_control';
-import {Template} from '../../api';
+import {CompileElement} from '../compiler/compile_element';
+import {CompileControl} from '../compiler/compile_control';
+import {Template} from '../api';
 
 import {StyleInliner} from './style_inliner';
-import {StyleUrlResolver} from '../style_url_resolver';
-import {CssProcessorStep} from '../css_processor_step';
+import {StyleUrlResolver} from './style_url_resolver';
+import {CssProcessorStep} from './css_processor_step';
+import {shimCssForComponent, insertStyleElement} from './util';
 
 export class EmulatedScopedCssStep extends CssProcessorStep {
   _templateUrl: string;
@@ -40,15 +41,15 @@ export class EmulatedScopedCssStep extends CssProcessorStep {
       DOM.setText(styleEl, '');
       ListWrapper.push(this._stylePromises, css);
       return css.then((css) => {
-        css = _shimCssForComponent(css, this._template.id);
+        css = shimCssForComponent(css, this._template.id);
         DOM.setText(styleEl, css);
       });
     } else {
-      css = _shimCssForComponent(css, this._template.id);
+      css = shimCssForComponent(css, this._template.id);
       DOM.setText(styleEl, css);
     }
 
     DOM.remove(styleEl);
-    _insertStyleElement(this._styleHost, styleEl);
+    insertStyleElement(this._styleHost, styleEl);
   }
 }

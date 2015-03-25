@@ -3,17 +3,16 @@ import {List, ListWrapper} from 'angular2/src/facade/collection';
 
 import {DOM} from 'angular2/src/dom/dom_adapter';
 
-import * as viewModule from '../../view/view';
-import * as NS from '../../compiler/compile_step';
-import {Template} from '../../api';
+import * as viewModule from '../view/view';
+import * as NS from '../compiler/compile_step';
+import {Template} from '../api';
 
 import {LightDom} from './light_dom';
-import {ShadowDomStrategy} from '../shadow_dom_strategy';
-import {StyleUrlResolver} from '../style_url_resolver';
-
+import {ShadowDomStrategy} from './shadow_dom_strategy';
+import {StyleUrlResolver} from './style_url_resolver';
 import {EmulatedUnscopedCssStep} from './emulated_unscoped_css_step';
 import {BaseEmulatedShadowDomStep} from './base_emulated_shadow_dom_step';
-import {moveViewNodesIntoParent} from '../util';
+import {moveViewNodesIntoParent} from './util';
 
 /**
  * This strategy emulates the Shadow DOM for the templates, styles **excluded**:
@@ -25,13 +24,13 @@ import {moveViewNodesIntoParent} from '../util';
  * - you can **not** use shadow DOM specific selectors in the styles
  */
 export class EmulatedUnscopedShadowDomStrategy extends ShadowDomStrategy {
-  _styleUrlResolver: StyleUrlResolver;
-  _styleHost;
+  styleUrlResolver: StyleUrlResolver;
+  styleHost;
 
   constructor(styleUrlResolver: StyleUrlResolver, styleHost) {
     super();
-    this._styleUrlResolver = styleUrlResolver;
-    this._styleHost = styleHost;
+    this.styleUrlResolver = styleUrlResolver;
+    this.styleHost = styleHost;
   }
 
   attachTemplate(el, view:viewModule.View) {
@@ -44,8 +43,8 @@ export class EmulatedUnscopedShadowDomStrategy extends ShadowDomStrategy {
   }
 
   getStyleCompileStep(template: Template, stylePromises: List<Promise>): NS.CompileStep {
-    return new EmulatedUnscopedCssStep(template, this._styleUrlResolver,
-      this._styleHost, stylePromises);
+    return new EmulatedUnscopedCssStep(template, this.styleUrlResolver,
+      this.styleHost, stylePromises);
   }
 
   getTemplateCompileStep(template: Template): NS.CompileStep {

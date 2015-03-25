@@ -5,7 +5,7 @@ import {ListWrapper, MapWrapper, List} from 'angular2/src/facade/collection';
 import {DOM} from 'angular2/src/dom/dom_adapter';
 
 import * as viewModule from './view';
-import * as ldModule from '../shadow_dom/emulation/light_dom';
+import * as ldModule from '../shadow_dom/light_dom';
 import * as vfModule from './view_factory';
 
 export class ViewContainer {

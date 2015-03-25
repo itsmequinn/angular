@@ -59,9 +59,9 @@ export function getContentAttribute(id: int) {
 }
 
 export function shimCssForComponent(cssText: string, componentId: string): string {
-  var id = _getComponentId(componentId);
+  var id = getComponentId(componentId);
   var shadowCss = new ShadowCss();
-  return shadowCss.shimCssText(cssText, _getContentAttribute(id), _getHostAttribute(id));
+  return shadowCss.shimCssText(cssText, getContentAttribute(id), getHostAttribute(id));
 }
 
 // Reset the caches - used for tests only

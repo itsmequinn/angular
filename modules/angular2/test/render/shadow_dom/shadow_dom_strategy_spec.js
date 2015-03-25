@@ -17,16 +17,16 @@ import {
 } from 'angular2/src/render/shadow_dom/native_shadow_dom_strategy';
 import {
   EmulatedScopedShadowDomStrategy,
-} from 'angular2/src/render/shadow_dom/emulation/emulated_scoped_shadow_dom_strategy';
+} from 'angular2/src/render/shadow_dom/emulated_scoped_shadow_dom_strategy';
 import {
   EmulatedUnscopedShadowDomStrategy,
-} from 'angular2/src/render/shadow_dom/emulation/emulated_unscoped_shadow_dom_strategy';
+} from 'angular2/src/render/shadow_dom/emulated_unscoped_shadow_dom_strategy';
 import {
   resetShadowDomCache,
-} from 'angular2/src/render/shadow_dom/emulation/util';
+} from 'angular2/src/render/shadow_dom/util';
 import {UrlResolver} from 'angular2/src/services/url_resolver';
 import {StyleUrlResolver} from 'angular2/src/render/shadow_dom/style_url_resolver';
-import {StyleInliner} from 'angular2/src/render/shadow_dom/emulation/style_inliner';
+import {StyleInliner} from 'angular2/src/render/shadow_dom/style_inliner';
 import {ProtoView} from 'angular2/src/render/view/proto_view';
 import {ProtoViewBuilder} from 'angular2/src/render/view/proto_view_builder';
 import {ViewFactory} from 'angular2/src/render/view/view_factory';

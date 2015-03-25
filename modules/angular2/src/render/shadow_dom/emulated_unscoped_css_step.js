@@ -3,11 +3,11 @@ import {List, ListWrapper, MapWrapper, Map} from 'angular2/src/facade/collection
 
 import {DOM} from 'angular2/src/dom/dom_adapter';
 
-import {Template} from '../../api';
-import {CssProcessorStep} from '../css_processor_step';
-import {StyleUrlResolver} from '../style_url_resolver';
+import {Template} from '../api';
 
-import {insertSharedStyleText} from '../util';
+import {CssProcessorStep} from './css_processor_step';
+import {StyleUrlResolver} from './style_url_resolver';
+import {insertSharedStyleText} from './util';
 
 export class EmulatedUnscopedCssStep extends CssProcessorStep {
   _templateUrl: string;

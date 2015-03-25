@@ -4,7 +4,7 @@ import {ListWrapper, MapWrapper, Map, StringMapWrapper, List} from 'angular2/src
 
 import {DOM} from 'angular2/src/dom/dom_adapter';
 
-import {Content} from '../shadow_dom/emulation/content_tag';
+import {Content} from '../shadow_dom/content_tag';
 import {ShadowDomStrategy} from '../shadow_dom/shadow_dom_strategy';
 import {EventManager} from '../events/event_manager';
 

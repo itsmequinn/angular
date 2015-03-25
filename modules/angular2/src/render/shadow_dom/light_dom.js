@@ -2,7 +2,7 @@ import {DOM} from 'angular2/src/dom/dom_adapter';
 import {List, ListWrapper} from 'angular2/src/facade/collection';
 import {isBlank, isPresent} from 'angular2/src/facade/lang';
 
-import * as viewModule from '../../view/view';
+import * as viewModule from '../view/view';
 import {Content} from './content_tag';
 
 export class DestinationLightDom {}
