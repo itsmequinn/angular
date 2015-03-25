@@ -134,6 +134,23 @@ export function main() {
         expect(host).toHaveText('view');
       });
 
+      it('should mark the host element when a child view is attached', () => {
+        var host = el('<div><span>original content</span></div>');
+        var nodes = el('<div>view</div>');
+        var pv = new ProtoView({
+          element: nodes,
+          elementBinders: [],
+          instantiateInPlace: false
+        });
+        var vf = new ViewFactory(0);
+        var view = vf.getView(pv);
+
+        strategy.attachTemplate(host, view);
+        var firstChild = DOM.firstChild(host);
+        expect(host).toHaveText('view');
+        expect(DOM.getAttribute(host, '_nghost-0')).toEqual('');
+      });
+
       it('should rewrite style urls', () => {
         var style = el('<div><style>.foo {background-image: url("img.jpg");}</style></div>');
         var template = new Template({absUrl: 'http://base'});
@@ -249,17 +266,6 @@ export function main() {
         var element = el('<div>a</div>');
         step.process(null, new CompileElement(element), null);
         expect(DOM.getOuterHTML(element)).toEqual('<div>a</div>');
-      });
-
-      // TODOz: the code that does this was removed from _ShimShadowDomStep
-      xit('should add an attribute to the host elements', () => {
-        var style = el('<div></div>');
-        var template = new Template({absUrl: 'http://base'});
-        var step = strategy.getTemplateCompileStep(template);
-        var compileElement = new CompileElement(style);
-        compileElement.componentDirective = new DirectiveMetadata(SomeOtherComponent, null);
-        step.process(null, compileElement, null);
-        expect(DOM.getAttribute(style, '_nghost-1')).toEqual('');
       });
     });
 
