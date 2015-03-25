@@ -20,6 +20,7 @@ export class CompilePipeline {
     var results = ListWrapper.create();
     var rootCompileElement = new CompileElement(rootElement, compilationCtxtDescription);
     rootCompileElement.inheritedProtoView = new ProtoViewBuilder(rootElement);
+    rootCompileElement.isViewRoot = true;
     this._process(results, null, rootCompileElement,
       compilationCtxtDescription
     );

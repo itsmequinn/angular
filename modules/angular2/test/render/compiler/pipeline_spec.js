@@ -59,6 +59,12 @@ export function main() {
       expect(results[2].inheritedElementBinder).toBe(results[3].inheritedElementBinder);
     });
 
+    it('should mark root elements as viewRoot', () => {
+      var rootElement = el('<div></div>');
+      var results = new CompilePipeline([]).process(rootElement);
+      expect(results[0].isViewRoot).toBe(true);
+    });
+
     it('should calculate distanceToParent / parent correctly', () => {
       var element = el('<div bind><div bind></div><div><div bind></div></div></div>');
       var pipeline = new CompilePipeline([new MockStep((parent, current, control) => {

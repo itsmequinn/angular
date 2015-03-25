@@ -1,6 +1,7 @@
 import {isBlank, isPresent, BaseException, StringWrapper} from 'angular2/src/facade/lang';
 import {DOM} from 'angular2/src/dom/dom_adapter';
 import {MapWrapper, ListWrapper} from 'angular2/src/facade/collection';
+import {Parser} from 'angular2/change_detection';
 
 import {CompileStep} from './compile_step';
 import {CompileElement} from './compile_element';
@@ -48,7 +49,6 @@ export class ViewSplitter extends CompileStep {
             `in ${current.elementDescription}`);
         } else {
           templateBindings = (attrValue.length == 0) ? key : key + ' ' + attrValue;
-          MapWrapper.set(attrs, 'template', templateBindings);
           hasTemplateBinding = true;
         }
       }
@@ -58,7 +58,7 @@ export class ViewSplitter extends CompileStep {
       if (DOM.isTemplateElement(current.element)) {
         if (!current.isViewRoot) {
           var viewRoot = new CompileElement(DOM.createTemplate(''));
-          viewRoot.inheritedViewRoot = current.inheritedElementBinder.bindNestedProtoView();
+          viewRoot.inheritedProtoView = current.bindElement().bindNestedProtoView();
           // viewRoot doesn't appear in the original template, so we associate
           // the current element description to get a more meaningful message in case of error
           viewRoot.elementDescription = current.elementDescription;
@@ -69,10 +69,14 @@ export class ViewSplitter extends CompileStep {
         }
       } if (hasTemplateBinding) {
         var newParent = new CompileElement(DOM.createTemplate(''));
-        newParent.inheritedViewRoot = current.inheritedElementBinder.bindNestedProtoView();
+        newParent.inheritedProtoView = current.inheritedProtoView;
+        newParent.inheritedElementBinder = current.inheritedElementBinder;
         // newParent doesn't appear in the original template, so we associate
         // the current element description to get a more meaningful message in case of error
         newParent.elementDescription = current.elementDescription;
+
+        current.inheritedProtoView = newParent.bindElement().bindNestedProtoView();
+        current.inheritedElementBinder = null;
         current.isViewRoot = true;
         this._parseTemplateBindings(templateBindings, newParent);
 
@@ -101,10 +105,10 @@ export class ViewSplitter extends CompileStep {
     for (var i=0; i<bindings.length; i++) {
       var binding = bindings[i];
       if (binding.keyIsVar) {
-        compileElement.addVariableBinding(binding.key, binding.name);
+        compileElement.bindElement().bindVariable(binding.key, binding.name);
         MapWrapper.set(compileElement.attrs(), binding.key, binding.name);
       } else if (isPresent(binding.expression)) {
-        compileElement.addPropertyBinding(binding.key, binding.expression);
+        compileElement.bindElement().bindProperty(binding.key, binding.expression);
         MapWrapper.set(compileElement.attrs(), binding.key, binding.expression.source);
       } else {
         DOM.setAttribute(compileElement.element, binding.key, '');

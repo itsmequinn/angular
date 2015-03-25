@@ -1,3 +1,4 @@
+import {isPresent} from 'angular2/src/facade/lang';
 import {List, Map} from 'angular2/src/facade/collection';
 import {ASTWithSource} from 'angular2/change_detection';
 
@@ -76,9 +77,9 @@ export class DirectiveMetadata {
   compileChildren:boolean;
   events:Map<string, string>;
   bind:Map<string, string>;
-  constructor(selector, compileChildren, events, bind) {
+  constructor({selector, compileChildren, events, bind}) {
     this.selector = selector;
-    this.compileChildren = compileChildren;
+    this.compileChildren = isPresent(compileChildren) ? compileChildren : true;
     this.events = events;
     this.bind = bind;
   }

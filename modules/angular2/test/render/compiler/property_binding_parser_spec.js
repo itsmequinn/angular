@@ -127,6 +127,18 @@ export function main() {
       var results = process(el('<div on-click="foo=bar"></div>'));
       expect(MapWrapper.get(results[0].eventBindings, 'click').source).toEqual('foo=bar');
     });
+
+    it('should store bound properties as temporal attributes', () => {
+      var results = createPipeline().process(el('<div bind-a="b" [c]="d"></div>'));
+      expect(MapWrapper.get(results[0].attrs(), 'a')).toEqual('b');
+      expect(MapWrapper.get(results[0].attrs(), 'c')).toEqual('d');
+    });
+
+    it('should store variables as temporal attributes', () => {
+      var results = createPipeline().process(el('<div var-a="b" #c="d"></div>'));
+      expect(MapWrapper.get(results[0].attrs(), 'a')).toEqual('b');
+      expect(MapWrapper.get(results[0].attrs(), 'c')).toEqual('d');
+    });
   });
 }
 
