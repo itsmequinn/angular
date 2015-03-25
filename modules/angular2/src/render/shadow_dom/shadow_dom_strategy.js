@@ -116,7 +116,7 @@ export class EmulatedScopedShadowDomStrategy extends EmulatedUnscopedShadowDomSt
     super.attachTemplate(el, view);
 
     var hostAttribute = _getHostAttribute(_getComponentId(view.proto.componentId));
-    DOM.setAttribute(element, hostAttribute, '');
+    DOM.setAttribute(el, hostAttribute, '');
   }
 
   getStyleCompileStep(template: Template, stylePromises: List<Promise>): NS.CompileStep {
@@ -306,10 +306,10 @@ var _sharedStyleTexts: Map<string, boolean> = MapWrapper.create();
 var _lastInsertedStyleEl;
 
 function _getComponentId(componentStringId: string) {
-  var id = MapWrapper.get(_componentUIDs, template.id);
+  var id = MapWrapper.get(_componentUIDs, componentStringId);
   if (isBlank(id)) {
     id = _nextComponentUID++;
-    MapWrapper.set(_componentUIDs, template.id, id);
+    MapWrapper.set(_componentUIDs, componentStringId, id);
   }
   return id;
 }
