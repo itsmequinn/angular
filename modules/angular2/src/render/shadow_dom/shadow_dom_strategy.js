@@ -37,6 +37,7 @@ export class ShadowDomStrategy {
    * An optional step that can modify the template style elements.
    *
    * @param {Template} template
+   * @param {List<Promise>} stylePromises
    * @returns {CompileStep} a compile step to append to the compiler pipeline
    */
   getStyleCompileStep(template: Template, stylePromises: List<Promise>): NS.CompileStep {
@@ -205,7 +206,19 @@ class _ShimShadowDomStep extends _BaseEmulatedShadowDomStep {
   }
 }
 
-class _EmulatedUnscopedCssStep extends NS.CompileStep {
+class _CssProcessorStep extends NS.CompileStep {
+  process(parent:CompileElement, current:CompileElement, control:CompileControl) {
+    if (DOM.tagName(current.element) == 'STYLE') {
+      current.ignoreBindings = true;
+      this.processStyleElement(current.element);
+    }
+  }
+
+  processStyleElement(styleEl) {}
+}
+
+
+class _EmulatedUnscopedCssStep extends _CssProcessorStep {
   _templateUrl: string;
   _styleUrlResolver: StyleUrlResolver;
   _styleHost;
@@ -217,8 +230,7 @@ class _EmulatedUnscopedCssStep extends NS.CompileStep {
     this._styleHost = styleHost;
   }
 
-  process(parent:CompileElement, current:CompileElement, control:CompileControl) {
-    var styleEl = current.element;
+  processStyleElement(styleEl) {
     var cssText = DOM.getText(styleEl);
     cssText = this._styleUrlResolver.resolveUrls(cssText, this._templateUrl);
     DOM.setText(styleEl, cssText);
@@ -233,7 +245,7 @@ class _EmulatedUnscopedCssStep extends NS.CompileStep {
   }
 }
 
-class _EmulatedScopedCssStep extends NS.CompileStep {
+class _EmulatedScopedCssStep extends _CssProcessorStep {
   _templateUrl: string;
   _template: Template;
   _styleInliner: StyleInliner;
@@ -251,9 +263,7 @@ class _EmulatedScopedCssStep extends NS.CompileStep {
     this._stylePromises = stylePromises;
   }
 
-  process(parent:CompileElement, current:CompileElement, control:CompileControl) {
-    var styleEl = current.element;
-
+  processStyleElement(styleEl) {
     var cssText = DOM.getText(styleEl);
 
     cssText = this._styleUrlResolver.resolveUrls(cssText, this._template.absUrl);
@@ -276,7 +286,7 @@ class _EmulatedScopedCssStep extends NS.CompileStep {
   }
 }
 
-class _NativeCssStep extends NS.CompileStep {
+class _NativeCssStep extends _CssProcessorStep {
   _styleUrlResolver: StyleUrlResolver;
   _templateUrl: string;
 
@@ -286,8 +296,7 @@ class _NativeCssStep extends NS.CompileStep {
     this._templateUrl = templateUrl;
   }
 
-  process(parent:CompileElement, current:CompileElement, control:CompileControl) {
-    var styleEl = current.element;
+  processStyleElement(styleEl) {
     var cssText = DOM.getText(styleEl);
     cssText = this._styleUrlResolver.resolveUrls(cssText, this._templateUrl);
     DOM.setText(styleEl, cssText);
