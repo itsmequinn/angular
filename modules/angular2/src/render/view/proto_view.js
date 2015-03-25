@@ -15,7 +15,8 @@ export class ProtoView extends api.ProtoViewRef {
 
   constructor({
     elementBinders,
-    element, instantiateInPlace,
+    element,
+    instantiateInPlace,
     componentId
   }) {
     this.element = element;

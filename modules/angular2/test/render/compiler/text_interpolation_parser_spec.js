@@ -9,7 +9,7 @@ import {CompileControl} from 'angular2/src/render/compiler/compile_control';
 import {IgnoreChildrenStep} from './pipeline_spec';
 
 export function main() {
-  ddescribe('TextInterpolationParser', () => {
+  describe('TextInterpolationParser', () => {
     function createPipeline(ignoreBindings = false) {
       return new CompilePipeline([
         new MockStep((parent, current, control) => { current.ignoreBindings = ignoreBindings; }),

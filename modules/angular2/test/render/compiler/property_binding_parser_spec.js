@@ -10,7 +10,7 @@ import {Lexer, Parser} from 'angular2/change_detection';
 var EMPTY_MAP = MapWrapper.create();
 
 export function main() {
-  ddescribe('PropertyBindingParser', () => {
+  describe('PropertyBindingParser', () => {
     function createPipeline(ignoreBindings = false, hasNestedProtoView = false) {
       return new CompilePipeline([
         new MockStep((parent, current, control) => {

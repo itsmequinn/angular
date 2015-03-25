@@ -19,7 +19,7 @@ import {PromiseWrapper} from 'angular2/src/facade/async';
 import {XHRMock} from 'angular2/src/mock/xhr_mock';
 
 export function main() {
-  ddescribe('TemplateLoader', () => {
+  describe('TemplateLoader', () => {
     var loader, xhr;
 
     beforeEach(() => {
