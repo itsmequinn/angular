@@ -11,7 +11,6 @@ import {Content} from '../shadow_dom/content_tag';
 
 import {ShadowDomStrategy} from '../shadow_dom/shadow_dom_strategy';
 import {EventManager} from '../events/event_manager';
-import {ElementPropertyAccessor} from './element_property_accessor';
 
 const NG_BINDING_CLASS = 'ng-binding';
 
@@ -51,8 +50,9 @@ export class View {
     return this._hydrated;
   }
 
-  setElementProperty(propertyAccessor:ElementPropertyAccessor, elementIndex:number, propertyName:string, value:Object) {
-    propertyAccessor.setProperty(this.boundElements[elementIndex], propertyName, value);
+  setElementProperty(elementIndex:number, propertyName:string, value:Object) {
+    var setter = MapWrapper.get(this.proto.propertySetters, propertyName);
+    setter(this.boundElements[elementIndex], value);
   }
 
   setText(textIndex:number, value:string) {

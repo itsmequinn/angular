@@ -6,7 +6,6 @@ import {ViewFactory} from './view/view_factory';
 import {Compiler} from './compiler/compiler';
 import {ShadowDomStrategy} from './shadow_dom/shadow_dom_strategy';
 import {EventManager} from './events/event_manager';
-import {ElementPropertyAccessor} from './view/element_property_accessor';
 import {ViewRef} from './direct_view_ref';
 import {DirectProtoViewRef} from './direct_proto_view_ref';
 
@@ -41,17 +40,15 @@ export class DirectRenderer extends api.Renderer {
   _viewFactory: ViewFactory;
   _shadowDomStrategy: ShadowDomStrategy;
   _evenManager: EventManager;
-  _propertyAccessor: ElementPropertyAccessor;
 
   constructor(
       compiler: Compiler, viewFactory: ViewFactory, shadowDomStrategy: ShadowDomStrategy,
-      eventManager: EventManager, propertyAccessor: ElementPropertyAccessor) {
+      eventManager: EventManager) {
     super();
     this._compiler = compiler;
     this._viewFactory = viewFactory;
     this._shadowDomStrategy = shadowDomStrategy;
     this._evenManager = eventManager;
-    this._propertyAccessor = propertyAccessor;
   }
 
   // TODO(tbosch): union type return ProtoView or Promise<ProtoView>
@@ -83,7 +80,7 @@ export class DirectRenderer extends api.Renderer {
   }
 
   setElementProperty(viewRef:api.ViewRef, elementIndex:number, propertyName:string, propertyValue:any):void {
-    _resolveView(viewRef).setElementProperty(this._propertyAccessor, elementIndex, propertyName, propertyValue);
+    _resolveView(viewRef).setElementProperty(elementIndex, propertyName, propertyValue);
   }
 
   setComponentView(viewRef:api.ViewRef, elementIndex:number, nestedViewRef:api.ViewRef):void {

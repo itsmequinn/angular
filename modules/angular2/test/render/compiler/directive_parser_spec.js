@@ -99,6 +99,15 @@ export function main() {
       expect(simpleProp.source).toEqual('someValue');
     });
 
+    it('should store working property setters', () => {
+      var element = el('<input some-decor-props>');
+      var results = process(element);
+      var directiveBinding = results[0].directives[0];
+      var setter = MapWrapper.get(directiveBinding.propertySetters, 'value');
+      setter(element, 'abc');
+      expect(element.value).toEqual('abc');
+    });
+
     it('should bind directive events', () => {
       var results = process(
         el('<div some-decor-events></div>')
@@ -140,7 +149,8 @@ var someDecoratorWithProps = new DirectiveMetadata({
   bind: {
     'dirProp': 'elProp',
     'doubleProp': 'elProp | double'
-  }
+  },
+  setters: ['value']
 });
 
 var someDecoratorWithEvents = new DirectiveMetadata({

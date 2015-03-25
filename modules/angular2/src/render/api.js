@@ -77,11 +77,13 @@ export class DirectiveMetadata {
   compileChildren:boolean;
   events:Map<string, string>;
   bind:Map<string, string>;
-  constructor({selector, compileChildren, events, bind}) {
+  setters:List<string>;
+  constructor({selector, compileChildren, events, bind, setters}) {
     this.selector = selector;
     this.compileChildren = isPresent(compileChildren) ? compileChildren : true;
     this.events = events;
     this.bind = bind;
+    this.setters = setters;
   }
 }
 

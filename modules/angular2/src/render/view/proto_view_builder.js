@@ -1,8 +1,9 @@
 import {isPresent} from 'angular2/src/facade/lang';
-import {ListWrapper, MapWrapper} from 'angular2/src/facade/collection';
+import {ListWrapper, MapWrapper, Set, SetWrapper} from 'angular2/src/facade/collection';
 import {DOM} from 'angular2/src/dom/dom_adapter';
 
 import {ASTWithSource} from 'angular2/change_detection';
+import {SetterFn} from 'angular2/src/reflection/types';
 
 import {ProtoView} from './proto_view';
 import {ElementBinder} from './element_binder';
@@ -19,6 +20,7 @@ export class ProtoViewBuilder {
   elements:List<ElementBinderBuilder>;
   instantiateInPlace:boolean;
   componentId:string;
+  propertySetters:Set<string>;
 
   constructor(rootElement) {
     this.rootElement = rootElement;
@@ -26,6 +28,7 @@ export class ProtoViewBuilder {
     this.instantiateInPlace = false;
     this.variableBindings = MapWrapper.create();
     this.componentId = null;
+    this.propertySetters = new Set();
   }
 
   bindElement(element, description = null):ElementBinderBuilder {
@@ -58,13 +61,20 @@ export class ProtoViewBuilder {
     var renderElementBinders = [];
 
     var apiElementBinders = [];
+    var propertySetters = MapWrapper.create();
     ListWrapper.forEach(this.elements, (ebb) => {
       var apiDirectiveBinders = ListWrapper.map(ebb.directives, (db) => {
+        MapWrapper.forEach(db.propertySetters, (setter, propertyName) => {
+          MapWrapper.set(propertySetters, propertyName, setter);
+        });
         return new api.DirectiveBinder({
           directiveIndex: db.directiveIndex,
           propertyBindings: db.propertyBindings,
           eventBindings: db.eventBindings
         });
+      });
+      MapWrapper.forEach(ebb.propertySetters, (setter, propertyName) => {
+        MapWrapper.set(propertySetters, propertyName, setter);
       });
       var nestedProtoView =
           isPresent(ebb.nestedProtoView) ? ebb.nestedProtoView.build() : null;
@@ -90,7 +100,8 @@ export class ProtoViewBuilder {
         element: this.rootElement,
         elementBinders: renderElementBinders,
         instantiateInPlace: instantiateInPlace,
-        componentId: this.componentId
+        componentId: this.componentId,
+        propertySetters: propertySetters
       })),
       elementBinders: apiElementBinders,
       variableBindings: this.variableBindings
@@ -113,6 +124,7 @@ export class ElementBinderBuilder {
   textBindingIndices: List<number>;
   textBindings: List<ASTWithSource>;
   contentTagSelector:string;
+  propertySetters: Map<string, SetterFn>;
 
   constructor(index, element, description) {
     this.element = element;
@@ -128,7 +140,8 @@ export class ElementBinderBuilder {
     this.eventBindings = MapWrapper.create();
     this.textBindings = [];
     this.textBindingIndices = [];
-    this.contentTagSelector = null
+    this.contentTagSelector = null;
+    this.propertySetters = MapWrapper.create();
   }
 
   setParent(parent:ElementBinderBuilder, distanceToParent):ElementBinderBuilder {
@@ -195,17 +208,23 @@ export class ElementBinderBuilder {
   setContentTagSelector(value:string) {
     this.contentTagSelector = value;
   }
+
+  bindPropertySetter(propertyName, setter) {
+    MapWrapper.set(this.propertySetters, propertyName, setter);
+  }
 }
 
 export class DirectiveBuilder {
   directiveIndex:number;
   propertyBindings: Map<string, ASTWithSource>;
   eventBindings: Map<string, ASTWithSource>;
+  propertySetters: Map<string, SetterFn>;
 
   constructor(directiveIndex) {
     this.directiveIndex = directiveIndex;
     this.propertyBindings = MapWrapper.create();
     this.eventBindings = MapWrapper.create();
+    this.propertySetters = MapWrapper.create();
   }
 
   bindProperty(name, expression) {
@@ -214,5 +233,9 @@ export class DirectiveBuilder {
 
   bindEvent(name, expression) {
     MapWrapper.set(this.eventBindings, name, expression);
+  }
+
+  bindPropertySetter(propertyName, setter) {
+    MapWrapper.set(this.propertySetters, propertyName, setter);
   }
 }

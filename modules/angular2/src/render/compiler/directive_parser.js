@@ -9,8 +9,9 @@ import {CompileStep} from './compile_step';
 import {CompileElement} from './compile_element';
 import {CompileControl} from './compile_control';
 
-import {DirectiveMetadata} from '../api';
+import {setterFactory} from './property_setter_factory';
 
+import {DirectiveMetadata} from '../api';
 import {dashCaseToCamelCase, camelCaseToDashCase} from '../util';
 
 /**
@@ -62,6 +63,11 @@ export class DirectiveParser extends CompileStep {
       if (isPresent(directive.events)) {
         MapWrapper.forEach(directive.events, (action, eventName) => {
           this._bindDirectiveEvent(eventName, action, current, directiveBinder);
+        });
+      }
+      if (isPresent(directive.setters)) {
+        ListWrapper.forEach(directive.setters, (propertyName) => {
+          directiveBinder.bindPropertySetter(propertyName, setterFactory(propertyName));
         });
       }
     });
