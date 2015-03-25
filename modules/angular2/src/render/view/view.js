@@ -1,5 +1,3 @@
-import * as api from '../api';
-
 import {DOM} from 'angular2/src/dom/dom_adapter';
 import {Promise} from 'angular2/src/facade/async';
 import {ListWrapper, MapWrapper, Map, StringMapWrapper, List} from 'angular2/src/facade/collection';
@@ -20,7 +18,7 @@ const NG_BINDING_CLASS = 'ng-binding';
 /**
  * Const of making objects: http://jsperf.com/instantiate-size-of-object
  */
-export class View extends api.ViewRef {
+export class View {
   boundElements:List;
   boundTextNodes:List;
   /// When the view is part of render tree, the DocumentFragment is empty, which is why we need

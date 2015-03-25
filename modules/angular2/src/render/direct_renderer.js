@@ -1,6 +1,4 @@
-import {
-  Renderer, Template, ViewRef, ViewContainerRef, BoundElementRef, BoundTextRef, ProtoViewRef
-} from './api';
+import * as api from './api';
 import {View} from './view/view';
 import {ViewContainer} from './view/view_container';
 import {ProtoView} from './view/proto_view';
@@ -9,8 +7,36 @@ import {Compiler} from './compiler/compiler';
 import {ShadowDomStrategy} from './shadow_dom/shadow_dom_strategy';
 import {EventManager} from './events/event_manager';
 import {ElementPropertyAccessor} from './view/element_property_accessor';
+import {ViewRef} from './direct_view_ref';
+import {DirectProtoViewRef} from './direct_proto_view_ref';
 
-export class DirectRenderer extends Renderer {
+function _resolveViewContainer(vc:api.ViewContainerRef) {
+  return _resolveView(vc.view).viewContainers[vc.viewContainerIndex];
+}
+
+function _resolveView(viewRef:api.ViewRef) {
+  return viewRef.delegate;
+}
+
+function _resolveProtoView(protoViewRef:api.ProtoViewRef) {
+  return protoViewRef.delegate;
+}
+
+function _wrapView(view:View) {
+  return new _DirectViewRef(view);
+}
+
+
+class _DirectViewRef extends ViewRef {
+  delegate:View;
+
+  constructor(delegate:View) {
+    this.delegate = delegate;
+  }
+}
+
+
+export class DirectRenderer extends api.Renderer {
   _compiler: Compiler;
   _viewFactory: ViewFactory;
   _shadowDomStrategy: ShadowDomStrategy;
@@ -20,6 +46,7 @@ export class DirectRenderer extends Renderer {
   constructor(
       compiler: Compiler, viewFactory: ViewFactory, shadowDomStrategy: ShadowDomStrategy,
       eventManager: EventManager, propertyAccessor: ElementPropertyAccessor) {
+    super();
     this._compiler = compiler;
     this._viewFactory = viewFactory;
     this._shadowDomStrategy = shadowDomStrategy;
@@ -27,49 +54,47 @@ export class DirectRenderer extends Renderer {
     this._propertyAccessor = propertyAccessor;
   }
 
-  _getViewContainer(vc:ViewContainerRef) {
-    return vc.view.viewContainers[vc.viewContainerIndex];
-  }
-
   // TODO(tbosch): union type return ProtoView or Promise<ProtoView>
-  compile(template:Template) {
+  compile(template:api.Template) {
+    // Note: compiler already uses a DirectProtoViewRef, so we don't
+    // need to do anything here
     return this._compiler.compile(template);
   }
 
   // this will always return data in sync
-  createRootView(selectorOrElement):ViewRef {
-    return this._viewFactory.getRootView(selectorOrElement);
+  createRootView(selectorOrElement):api.ViewRef {
+    return _wrapView(_viewFactory.getRootView(selectorOrElement));
   }
 
-  createView(protoView:ProtoViewRef):ViewRef {
-    return this._viewFactory.getView(protoView);
+  createView(protoViewRef:api.ProtoViewRef):api.ViewRef {
+    return _wrapView(_viewFactory.getView(_resolveProtoView(protoViewRef)));
   }
 
-  destroyView(view:ViewRef) {
-    this._viewFactory.returnView(view);
+  destroyView(viewRef:api.ViewRef) {
+    this._viewFactory.returnView(this._resolveView(viewRef));
   }
 
-  insertViewIntoContainer(vc:ViewContainerRef, view:ViewRef, atIndex=-1):void {
-    this._getViewContainer(vc).insert(view, atIndex);
+  insertViewIntoContainer(vcRef:api.ViewContainerRef, viewRef:api.ViewRef, atIndex=-1):void {
+    this._resolveViewContainer(vcRef).insert(_resolveView(viewRef), atIndex);
   }
 
-  detachViewFromContainer(vc:ViewContainerRef, view:ViewRef):void {
-    this._getViewContainer(vc).detach(view);
+  detachViewFromContainer(vcRef:api.ViewContainerRef, viewRef:api.ViewRef):void {
+    this._resolveViewContainer(vcRef).detach(_resolveView(viewRef));
   }
 
-  setElementProperty(view:ViewRef, elementIndex:number, propertyName:string, propertyValue:any):void {
-    view.setElementProperty(this._propertyAccessor, elementIndex, propertyName, propertyValue);
+  setElementProperty(viewRef:api.ViewRef, elementIndex:number, propertyName:string, propertyValue:any):void {
+    _resolveView(viewRef).setElementProperty(this._propertyAccessor, elementIndex, propertyName, propertyValue);
   }
 
-  setComponentView(view:ViewRef, elementIndex:number, nestedView:ViewRef):void {
-    view.setComponentView(this._shadowDomStrategy, elementIndex, nestedView);
+  setComponentView(viewRef:api.ViewRef, elementIndex:number, nestedViewRef:api.ViewRef):void {
+    _resolveView(viewRef).setComponentView(this._shadowDomStrategy, elementIndex, _resolveView(nestedViewRef));
   }
 
-  setText(view:ViewRef, textNodeIndex:number, text:string):void {
-    view.setText(textNodeIndex, text);
+  setText(viewRef:api.ViewRef, textNodeIndex:number, text:string):void {
+    _resolveView(viewRef).setText(textNodeIndex, text);
   }
 
-  listen(view:ViewRef, elementIndex:number, eventName:string, callback:Function):void {
-    view.listen(this._eventManager, elementIndex, eventName, callback);
+  listen(viewRef:api.ViewRef, elementIndex:number, eventName:string, callback:Function):void {
+    _resolveView(viewRef).listen(this._eventManager, elementIndex, eventName, callback);
   }
 }

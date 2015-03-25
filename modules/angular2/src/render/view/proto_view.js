@@ -2,10 +2,9 @@ import {isPresent} from 'angular2/src/facade/lang';
 import {DOM} from 'angular2/src/dom/dom_adapter';
 
 import {ElementBinder} from './element_binder';
-import * as api from '../api';
 import {NG_BINDING_CLASS} from '../util';
 
-export class ProtoView extends api.ProtoViewRef {
+export class ProtoView {
   element;
   elementBinders:List<ElementBinder>;
   isTemplateElement:boolean;

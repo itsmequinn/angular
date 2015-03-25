@@ -58,7 +58,7 @@ export function runCompilerCommonTests() {
         id: 'someId',
         inline: '<div></div>'
       }));
-      expect(protoView.render.componentId).toBe('someId');
+      expect(protoView.render.delegate.componentId).toBe('someId');
     });
 
     it('should use the inline template and compile in sync', () => {
@@ -67,7 +67,7 @@ export function runCompilerCommonTests() {
         id: 'someId',
         inline: 'inline component'
       }));
-      expect(DOM.getInnerHTML(protoView.render.element)).toEqual('inline component');
+      expect(DOM.getInnerHTML(protoView.render.delegate.element)).toEqual('inline component');
     });
 
     it('should load url templates', inject([AsyncTestCompleter], (async) => {
@@ -79,7 +79,7 @@ export function runCompilerCommonTests() {
         id: 'someId',
         absUrl: 'someUrl'
       })).then( (protoView) => {
-        expect(DOM.getInnerHTML(protoView.render.element)).toEqual('url component');
+        expect(DOM.getInnerHTML(protoView.render.delegate.element)).toEqual('url component');
         async.done();
       });
     }));

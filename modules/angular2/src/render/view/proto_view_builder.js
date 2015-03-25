@@ -9,6 +9,7 @@ import {ElementBinder} from './element_binder';
 import {ShadowDomStrategy} from '../shadow_dom/shadow_dom_strategy';
 
 import * as api from '../api';
+import {DirectProtoViewRef} from '../direct_proto_view_ref';
 
 import {NG_BINDING_CLASS} from '../util';
 
@@ -85,12 +86,12 @@ export class ProtoViewBuilder {
       }));
     });
     return new api.ProtoView({
-      render: new ProtoView({
+      render: new DirectProtoViewRef(new ProtoView({
         element: this.rootElement,
         elementBinders: renderElementBinders,
         instantiateInPlace: instantiateInPlace,
         componentId: this.componentId
-      }),
+      })),
       elementBinders: apiElementBinders,
       variableBindings: this.variableBindings
     });
