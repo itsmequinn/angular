@@ -2,18 +2,18 @@ import {isPresent} from 'angular2/src/facade/lang';
 import {List, Map} from 'angular2/src/facade/collection';
 import {ASTWithSource} from 'angular2/change_detection';
 
-// Note: we are already parsing expressions on the render side:
-// - this makes the ElementBinders more compact
-//   (e.g. no need to distinguish interpolations from regular expressions from literals)
-// - allows later to store event meta data that defines the data
-//   that should be returned to the application when an even thappens
-// - we need the parse at least for the `template` attribute to match
-//   directives in it
-// - render compiler would read all syntax, application
-//   would be syntax independent
-// - render compiler is not on the critical path as
-//   its output will be stored in precompiled templates.
-
+/**
+ * General notes:
+ * We are already parsing expressions on the render side:
+ * - this makes the ElementBinders more compact
+ *   (e.g. no need to distinguish interpolations from regular expressions from literals)
+ * - allows to retrieve which properties should be accessed from the event
+ *   by looking at the expression
+ * - we need the parse at least for the `template` attribute to match
+ *   directives in it
+ * - render compiler is not on the critical path as
+ *   its output will be stored in precompiled templates.
+ */
 export class ElementBinder {
   index:number;
   parentIndex:number;
@@ -24,6 +24,9 @@ export class ElementBinder {
   nestedProtoView:ProtoView;
   propertyBindings: Map<string, ASTWithSource>;
   variableBindings: Map<string, ASTWithSource>;
+  // Note: this contains a preprocessed AST
+  // that replaced the values that should be extracted from the element
+  // with a local name
   eventBindings: Map<string, ASTWithSource>;
   textBindings: List<ASTWithSource>;
 
@@ -50,6 +53,9 @@ export class ElementBinder {
 export class DirectiveBinder {
   directiveIndex:number;
   propertyBindings: Map<string, ASTWithSource>;
+  // Note: this contains a preprocessed AST
+  // that replaced the values that should be extracted from the element
+  // with a local name
   eventBindings: Map<string, ASTWithSource>;
   constructor({
     directiveIndex, propertyBindings, eventBindings
@@ -73,17 +79,23 @@ export class ProtoView {
 }
 
 export class DirectiveMetadata {
+  static get COMPONENT_TYPE = 1;
+  static get DYNAMIC_COMPONENT_TYPE = 1;
+  static get VIEWPORT_TYPE = 2;
+
   selector:string;
   compileChildren:boolean;
   events:Map<string, string>;
   bind:Map<string, string>;
   setters:List<string>;
-  constructor({selector, compileChildren, events, bind, setters}) {
+  type:number;
+  constructor({selector, compileChildren, events, bind, setters, type}) {
     this.selector = selector;
     this.compileChildren = isPresent(compileChildren) ? compileChildren : true;
     this.events = events;
     this.bind = bind;
     this.setters = setters;
+    this.type = type;
   }
 }
 
@@ -116,40 +128,103 @@ export class Template {
 }
 
 export class Renderer {
-  // TODO(tbosch): union type return ProtoView or Promise<ProtoView>
-  compile(template:Template) {}
+  /**
+   * Compiles a single ProtoView. Non recursive so that
+   * we don't need to serialize all possible components over the wire,
+   * but only the needed ones based on previous calls.
+   */
+  compile(template:Template):Promise<ProtoView> {}
 
-  createView(protoView:ProtoViewRef):ViewRef {}
+  /**
+   * Creates a root view and all of its nested component views at once.
+   * See createView.
+   * @param {List<ProtoViewRef>} protoViewRefs
+   *    ProtoViews for the nested components in depth
+   *    first order, exlcluding dynamic components.
+   */
+  createRootView(selectorOrElement, protoViewRefs:List<ProtoViewRef>):List<ViewRef> {}
 
-  // Note: This does NOT remove the view from
-  // a ViewContainer nor it's parent component!
+  /**
+   * Creates a view and all of its nested component views at once.
+   *
+   * Note: We need to pass the nested component views here as well
+   * so we can cache them all in one chunk instead of splitting them up.
+   * Note: This returns a List of ViewRefs synchronously also in
+   * a WebWorker scenario as the required ids will be created on the client already.
+   *
+   * @param {List<ProtoViewRef>} protoViewRefs
+   *    ProtoViews for the nested components in depth
+   *    first order, exlcluding dynamic components.
+   */
+  createView(protoViewRefs:List<ProtoViewRef>):List<ViewRef> {}
+
+  /**
+   * Destroys a view and returns it back into the pool.
+   * Also destroys all views in ViewContainers transitively,
+   * but does not destroy nested component views.
+   * Removes the view from its previous viewContainer if needed.
+   */
   destroyView(view:ViewRef):void {}
 
-  // this will always return data in sync
-  createRootView(selectorOrElement):ViewRef {}
-
-  insertViewIntoContainer(vc:ViewContainerRef, view:ViewRef, atIndex=-1):void {}
-
-  // Note: We can't detach based on an index
-  // as otherwise we would need to return the detached View in sync,
-  // which is not possible over a remote protocol
   /**
-   * The method can be used together with insert to implement a view move, i.e.
-   * moving the dom nodes while the directives in the view stay intact.
-   * Note: The detached view cannot be inserted into another ViewContainer!
+   * Inserts a view into a viewContainer in another view.
+   * Removes the view from its previous viewContainer if needed.
    */
-  detachViewFromContainer(vc:ViewContainerRef, view:ViewRef):void {}
+  insertViewIntoContainer(vcRef:ViewContainerRef, view:ViewRef, atIndex):void {}
 
+  /**
+   * Sets a property on an element.
+   * Note: This will fail if the property was not mentioned previously as a propertySetter
+   * in the Template.
+   */
   setElementProperty(view:ViewRef, elementIndex:number, propertyName:string, propertyValue:any):void {}
 
+  /**
+   * Installs a nested component in another view.
+   * This will fail if no directive of type DYNAMIC_COMPONENT_TYPE
+   * was matched at this place in the template.
+   */
   setComponentView(view:ViewRef, elementIndex:number, nestedView:ViewRef):void {}
 
+  /**
+   * This will set the value for a text node.
+   * Note: This needs to be separate from setElementProperty as we don't have ElementBinders
+   * for text nodes in the ProtoView either.
+   */
   setText(view:ViewRef, textNodeIndex:number, text:string):void {}
 
-  // TODO(tbosch): think about how to serialize callbacks
-  // - maybe keep a local WeakMap with ids?
-  listen(view:ViewRef, elementIndex:number, eventName:string, callback:Function):void {}
+  /**
+   * Sets the dispatcher for all events that have been defined in the template or in directives
+   * in the given view.
+   */
+  setEventDispatcher(view:ViewRef, dispatcher:EventDispatcher) {}
 
-  // To be called at end of VmTurn
+  /**
+   * To be called at the end of the VmTurn so the API can buffer calls
+   */
   flush():void {}
+}
+
+
+/**
+ * A dispatcher for all events happening in a view.
+ */
+class EventDispatcher {
+  /**
+   * Called when an event was triggered for a on-* attribute on an element.
+   * @param {Map<string,Object>} locals Locals to be used to evaluate the
+   *   event expressions
+   */
+  dispatchElementEvent(
+    view:ViewRef, elementIndex:number, eventName:string, locals:Map<string, object>
+  ) {}
+
+  /**
+   * Called when an event was triggered for a directive event.
+   * @param {Map<string,Object>} locals Locals to be used to evaluate the
+   *   event expressions
+   */
+  dispatchDirectiveEvent(
+    view:ViewRef, elementIndex:number, directiveIndex:number, eventName:string, locals:Map<string, object>
+  ) {}
 }
