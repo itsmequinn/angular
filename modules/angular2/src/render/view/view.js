@@ -10,7 +10,8 @@ import {LightDom} from '../shadow_dom/light_dom';
 import {Content} from '../shadow_dom/content_tag';
 
 import {ShadowDomStrategy} from '../shadow_dom/shadow_dom_strategy';
-import {EventManager} from '../events/event_manager';
+
+import {EventDispatcher} from '../api';
 
 const NG_BINDING_CLASS = 'ng-binding';
 
@@ -30,7 +31,9 @@ export class View {
   contentTags: List<Content>;
   lightDoms: List<LightDom>;
   proto: ProtoView;
+  _attached: boolean;
   _hydrated: boolean;
+  _eventDispatcher: EventDispatcher;
 
   constructor(
       proto:ProtoView, rootNodes:List,
@@ -44,10 +47,29 @@ export class View {
     this.lightDoms = ListWrapper.createFixedSize(boundElements.length);
     this.componentChildViews = ListWrapper.createFixedSize(boundElements.length);
     this._hydrated = false;
+    this._attached = false;
   }
 
   hydrated() {
     return this._hydrated;
+  }
+
+  attached() {
+    return this._attached;
+  }
+
+  attach() {
+    if (this._attached) {
+      throw new BaseException('This view is already attached');
+    }
+    this._attached = true;
+  }
+
+  detach() {
+    if (!this._attached) {
+      throw new BaseException('This view is not attached');
+    }
+    this._attached = false;
   }
 
   setElementProperty(elementIndex:number, propertyName:string, value:Object) {
@@ -59,14 +81,20 @@ export class View {
     DOM.setText(this.boundTextNodes[textIndex], value);
   }
 
-  listen(eventManager:EventManager, elementIndex:number, eventName:string, callback:Function) {
-    eventManager(this.boundElements[elementIndex], eventName, callback);
-  }
-
-  setComponentView(strategy: ShadowDomStrategy, elementIndex:number, childView:View) {
+  createComponentView(strategy: ShadowDomStrategy, viewFactory: ViewFactory,
+      elementIndex:number, childProtoView:ProtoView):View {
+    var previousComponent = this.componentChildViews[elementIndex];
+    if (isPresent(previousComponent)) {
+      if (previousComponent.proto !== childProtoView) {
+        throw new BaseException('There already is a child component view with a different ProtoView');
+      }
+      return;
+    }
+    var childView = viewFactory.create(childProtoView);
     var element = this.boundElements[elementIndex];
     var lightDom = strategy.constructLightDom(this, childView, element);
     strategy.attachTemplate(element, childView);
+    childView.attach();
     this.lightDoms[elementIndex] = lightDom;
     this.componentChildViews[elementIndex] = childView;
     if (this._hydrated) {
@@ -153,5 +181,9 @@ export class View {
       }
     }
     this._hydrated = false;
+  }
+
+  setEventDispatcher(dispatcher:EventDispatcher) {
+    this._eventDispatcher = dispatcher;
   }
 }

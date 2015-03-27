@@ -1,4 +1,4 @@
-export {AST} from './src/change_detection/parser/ast';
+export {AST, AstTransformer} from './src/change_detection/parser/ast';
 export {Lexer} from './src/change_detection/parser/lexer';
 export {Parser} from './src/change_detection/parser/parser';
 export {Locals}

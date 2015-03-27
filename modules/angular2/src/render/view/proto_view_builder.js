@@ -2,7 +2,7 @@ import {isPresent} from 'angular2/src/facade/lang';
 import {ListWrapper, MapWrapper, Set, SetWrapper} from 'angular2/src/facade/collection';
 import {DOM} from 'angular2/src/dom/dom_adapter';
 
-import {ASTWithSource} from 'angular2/change_detection';
+import {ASTWithSource, AST, AstTransformer} from 'angular2/change_detection';
 import {SetterFn} from 'angular2/src/reflection/types';
 
 import {ProtoView} from './proto_view';
@@ -63,6 +63,7 @@ export class ProtoViewBuilder {
     var apiElementBinders = [];
     var propertySetters = MapWrapper.create();
     ListWrapper.forEach(this.elements, (ebb) => {
+      var eventLocalsAstSplitters = MapWrapper.create();
       var apiDirectiveBinders = ListWrapper.map(ebb.directives, (db) => {
         MapWrapper.forEach(db.propertySetters, (setter, propertyName) => {
           MapWrapper.set(propertySetters, propertyName, setter);
@@ -70,7 +71,7 @@ export class ProtoViewBuilder {
         return new api.DirectiveBinder({
           directiveIndex: db.directiveIndex,
           propertyBindings: db.propertyBindings,
-          eventBindings: db.eventBindings
+          eventBindings: this._splitEventAstIntoLocals(db.eventBindings, eventLocalsAstSplitters)
         });
       });
       MapWrapper.forEach(ebb.propertySetters, (setter, propertyName) => {
@@ -86,13 +87,14 @@ export class ProtoViewBuilder {
         directives: apiDirectiveBinders,
         nestedProtoView: nestedProtoView,
         propertyBindings: ebb.propertyBindings, variableBindings: ebb.variableBindings,
-        eventBindings: ebb.eventBindings,
+        eventBindings: this._splitEventAstIntoLocals(ebb.eventBindings, eventLocalsAstSplitters),
         textBindings: ebb.textBindings
       }));
       ListWrapper.push(renderElementBinders, new ElementBinder({
         textNodeIndices: ebb.textBindingIndices,
         contentTagSelector: ebb.contentTagSelector,
-        nestedProtoView: isPresent(nestedProtoView) ? nestedProtoView.render : null
+        nestedProtoView: isPresent(nestedProtoView) ? nestedProtoView.render : null,
+        eventLocals: eventLocals
       }));
     });
     return new api.ProtoView({
@@ -101,11 +103,23 @@ export class ProtoViewBuilder {
         elementBinders: renderElementBinders,
         instantiateInPlace: instantiateInPlace,
         componentId: this.componentId,
-        propertySetters: propertySetters
+        propertySetters: propertySetters,
+        eventLocals: eventLocalsAstSplitters.locals
       })),
       elementBinders: apiElementBinders,
       variableBindings: this.variableBindings
     });
+  }
+
+  _splitEventAstIntoLocals(eventBindings:Map<string, ASTWithSource>, eventLocalsAstSplitters):Map<string, ASTWithSource> {
+    if (isPresent(eventBindings)) {
+      var result = MapWrapper.create();
+      MapWrapper.forEach(eventBindings, (astWithSource, eventName) => {
+        MapWrapper.set(result, eventName, astWithSource.ast.visit(eventLocalsAstSplitters));
+      });
+      return result;
+    }
+    return null;
   }
 }
 
@@ -237,5 +251,22 @@ export class DirectiveBuilder {
 
   bindPropertySetter(propertyName, setter) {
     MapWrapper.set(this.propertySetters, propertyName, setter);
+  }
+}
+
+export class EventLocalsAstSplitter extends AstTransformer {
+  locals:List<AST>;
+
+  constructor() {
+    this.locals = [];
+  }
+
+  visitAccessMember(ast:AccessMember) {
+    if (ast.name === '$target') {
+      ListWrapper.push(this.locals, ast);
+      return new AccessMember('$eventProps', `${this.locals.length - 1}`);
+    } else {
+      return ast;
+    }
   }
 }

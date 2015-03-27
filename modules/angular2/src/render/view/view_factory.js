@@ -21,10 +21,12 @@ export var VIEW_POOL_CAPACITY = new OpaqueToken('ViewFactory.viewPoolCapacity');
 export class ViewFactory {
   _poolCapacity:number;
   _pooledViews:List<View>;
+  _eventManager:EventManager;
 
-  constructor(capacity) {
+  constructor(capacity, eventManager) {
     this._poolCapacity = capacity;
     this._pooledViews = ListWrapper.create();
+    this._eventManager = eventManager;
   }
 
   getView(protoView:ProtoView): View {
@@ -48,6 +50,9 @@ export class ViewFactory {
   }
 
   returnView(view:View) {
+    if (view.attached()) {
+      throw new BaseException('The view is still attached');
+    }
     if (view.hydrated()) {
       view.dehydrate();
     }
@@ -120,6 +125,13 @@ export class ViewFactory {
         contentTag = new Content(element, binder.contentTagSelector);
       }
       contentTags[binderIdx] = contentTag;
+
+      // events
+      if (isPresent(binder.eventLocals)) {
+        MapWrapper.forEach(binder.eventLocals, (ast, eventName) => {
+          this._createEventListener(element, binderIdx, eventName, ast);
+        });
+      }
     }
 
     var view = new View(
@@ -130,4 +142,9 @@ export class ViewFactory {
     return view;
   }
 
+  _createEventListener(element, elementIndex, eventName, localsAst) {
+    eventManager.addEventListener(element, eventName, (event) => {
+      view.eventDispatcher.dispatch(elementIndex, eventName, localsAst.eval(event, {}));
+    });
+  }
 }

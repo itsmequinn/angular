@@ -17,21 +17,15 @@ export class Compiler {
     this._stepFactory = stepFactory;
   }
 
-  compile(template: Template) {
-    var tplElement = this._templateLoader.load(template);
-
-    if (PromiseWrapper.isPromise(tplElement)) {
-      return PromiseWrapper.then(tplElement,
-        (el) => this._compileTemplate(template, el),
-        (_) => { throw new BaseException(`Failed to load the template "${template.id}"`); }
-      );
-    }
-    return this._compileTemplate(template, tplElement);
-
+  compile(template: Template):Promise<ProtoView> {
+    var tplPromise = this._templateLoader.load(template);
+    return PromiseWrapper.then(tplPromise,
+      (el) => this._compileTemplate(template, el),
+      (_) => { throw new BaseException(`Failed to load the template "${template.id}"`); }
+    );
   }
 
-  // TODO(tbosch): union type return ProtoView or Promise<ProtoView>
-  _compileTemplate(template: Template, tplElement) {
+  _compileTemplate(template: Template, tplElement):Promise<ProtoView> {
     var subTaskPromises = [];
     var pipeline = new CompilePipeline(this._stepFactory.createSteps(template, subTaskPromises));
     var compileElements;
@@ -42,11 +36,9 @@ export class Compiler {
       .setComponentId(template.id).build();
 
     if (subTaskPromises.length > 0) {
-      // The protoView is ready after all asynchronous styles are ready
-      var syncProtoView = protoView;
-      protoView = PromiseWrapper.all(subTaskPromises).then((_) => syncProtoView);
+      return PromiseWrapper.all(subTaskPromises).then((_) => protoView);
+    } else {
+      return PromiseWrapper.resolve(protoView);
     }
-
-    return protoView;
   }
 }

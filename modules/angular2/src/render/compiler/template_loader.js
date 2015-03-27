@@ -20,10 +20,9 @@ export class TemplateLoader {
     this._htmlCache = StringMapWrapper.create();
   }
 
-  // TODO(vicb): union type: return an Element or a Promise<Element>
-  load(template: Template) {
+  load(template: Template):Promise {
     if (isPresent(template.inline)) {
-      return DOM.createTemplate(template.inline);
+      return PromiseWrapper.resolve(DOM.createTemplate(template.inline));
     }
     var url = template.absUrl;
     if (isPresent(url)) {

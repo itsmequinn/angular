@@ -51,9 +51,8 @@ export class DirectiveParser extends CompileStep {
 
     this._selectorMatcher.match(cssSelector, (selector, directiveIndex) => {
       var elementBinder = current.bindElement();
-      var directiveBinder = elementBinder.bindDirective(directiveIndex);
-      // TODO: fill directiveBinder
       var directive = this._directives[directiveIndex];
+      var directiveBinder = elementBinder.bindDirective(directiveIndex);
       current.compileChildren = current.compileChildren && directive.compileChildren;
       if (isPresent(directive.bind)) {
         MapWrapper.forEach(directive.bind, (bindConfig, dirProperty) => {

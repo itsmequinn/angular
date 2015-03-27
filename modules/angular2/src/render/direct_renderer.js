@@ -51,14 +51,12 @@ export class DirectRenderer extends api.Renderer {
     this._evenManager = eventManager;
   }
 
-  // TODO(tbosch): union type return ProtoView or Promise<ProtoView>
-  compile(template:api.Template) {
+  compile(template:api.Template):Promise<ProtoView> {
     // Note: compiler already uses a DirectProtoViewRef, so we don't
     // need to do anything here
     return this._compiler.compile(template);
   }
 
-  // this will always return data in sync
   createRootView(selectorOrElement):api.ViewRef {
     return _wrapView(_viewFactory.getRootView(selectorOrElement));
   }
@@ -83,15 +81,19 @@ export class DirectRenderer extends api.Renderer {
     _resolveView(viewRef).setElementProperty(elementIndex, propertyName, propertyValue);
   }
 
-  setComponentView(viewRef:api.ViewRef, elementIndex:number, nestedViewRef:api.ViewRef):void {
-    _resolveView(viewRef).setComponentView(this._shadowDomStrategy, elementIndex, _resolveView(nestedViewRef));
+  createComponentView(viewRef:api.ViewRef, elementIndex:number, nestedProtoViewRef:api.ProtoViewRef):void {
+    _resolveView(viewRef).setComponentView(
+      this._shadowDomStrategy,
+      this._viewFactory,
+      elementIndex, _resolveProtoView(nestedProtoViewRef)
+    );
   }
 
   setText(viewRef:api.ViewRef, textNodeIndex:number, text:string):void {
     _resolveView(viewRef).setText(textNodeIndex, text);
   }
 
-  listen(viewRef:api.ViewRef, elementIndex:number, eventName:string, callback:Function):void {
-    _resolveView(viewRef).listen(this._eventManager, elementIndex, eventName, callback);
+  setEventDispatcher(view:ViewRef, dispatcher:api.EventDispatcher) {
+    _resolveView(viewRef).setEventDispatcher(dispatcher);
   }
 }

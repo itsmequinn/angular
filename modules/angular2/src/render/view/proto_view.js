@@ -15,13 +15,15 @@ export class ProtoView {
   rootBindingOffset:int;
   componentId:string;
   propertySetters: Map<string, SetterFn>;
+  eventLocals: List<AST>;
 
   constructor({
     elementBinders,
     element,
     instantiateInPlace,
     componentId,
-    propertySetters
+    propertySetters,
+    eventLocals
   }) {
     this.element = element;
     this.elementBinders = elementBinders;
@@ -30,5 +32,6 @@ export class ProtoView {
     this.rootBindingOffset = (isPresent(this.element) && DOM.hasClass(this.element, NG_BINDING_CLASS)) ? 1 : 0;
     this.componentId = componentId;
     this.propertySetters = propertySetters;
+    this.eventLocals = eventLocals;
   }
 }

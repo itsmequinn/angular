@@ -51,7 +51,8 @@ export class ElementBinder {
 }
 
 export class DirectiveBinder {
-  directiveIndex:number;
+  // Index into the array of directives in the Template instance
+  directiveIndex:any;
   propertyBindings: Map<string, ASTWithSource>;
   // Note: this contains a preprocessed AST
   // that replaced the values that should be extracted from the element
@@ -79,17 +80,15 @@ export class ProtoView {
 }
 
 export class DirectiveMetadata {
-  static get COMPONENT_TYPE = 1;
-  static get DYNAMIC_COMPONENT_TYPE = 1;
-  static get VIEWPORT_TYPE = 2;
-
+  id:any;
   selector:string;
   compileChildren:boolean;
   events:Map<string, string>;
   bind:Map<string, string>;
   setters:List<string>;
   type:number;
-  constructor({selector, compileChildren, events, bind, setters, type}) {
+  constructor({id, selector, compileChildren, events, bind, setters, type}) {
+    this.id = id;
     this.selector = selector;
     this.compileChildren = isPresent(compileChildren) ? compileChildren : true;
     this.events = events;
@@ -119,6 +118,7 @@ export class Template {
   absUrl: string;
   inline: string;
   directives: List<DirectiveMetadata>;
+
   constructor({id, absUrl, inline, directives}) {
     this.id = id;
     this.absUrl = absUrl;
@@ -136,41 +136,32 @@ export class Renderer {
   compile(template:Template):Promise<ProtoView> {}
 
   /**
-   * Creates a root view and all of its nested component views at once.
-   * See createView.
-   * @param {List<ProtoViewRef>} protoViewRefs
-   *    ProtoViews for the nested components in depth
-   *    first order, exlcluding dynamic components.
-   */
-  createRootView(selectorOrElement, protoViewRefs:List<ProtoViewRef>):List<ViewRef> {}
-
-  /**
-   * Creates a view and all of its nested component views at once.
+   * Creates a root view
    *
-   * Note: We need to pass the nested component views here as well
-   * so we can cache them all in one chunk instead of splitting them up.
-   * Note: This returns a List of ViewRefs synchronously also in
-   * a WebWorker scenario as the required ids will be created on the client already.
-   *
-   * @param {List<ProtoViewRef>} protoViewRefs
-   *    ProtoViews for the nested components in depth
-   *    first order, exlcluding dynamic components.
+   * Note: This returns the ViewRef synchronously also in
+   * a WebWorker scenario as the required id will be created on the client already.
    */
-  createView(protoViewRefs:List<ProtoViewRef>):List<ViewRef> {}
+  createRootView(selectorOrElement):ViewRef {}
 
   /**
    * Destroys a view and returns it back into the pool.
-   * Also destroys all views in ViewContainers transitively,
-   * but does not destroy nested component views.
-   * Removes the view from its previous viewContainer if needed.
    */
   destroyView(view:ViewRef):void {}
 
   /**
-   * Inserts a view into a viewContainer in another view.
-   * Removes the view from its previous viewContainer if needed.
+   * Creates a new View
+   */
+  createView(protoViewRef:api.ProtoViewRef):api.ViewRef {}
+
+  /**
+   * Inserts a detached view into a viewContainer.
    */
   insertViewIntoContainer(vcRef:ViewContainerRef, view:ViewRef, atIndex):void {}
+
+  /**
+   * Detaches a view from a container so that it can be inserted later on
+   */
+  detachViewFromContainer(vcRef:ViewContainerRef, view:ViewRef):void {}
 
   /**
    * Sets a property on an element.
@@ -180,11 +171,11 @@ export class Renderer {
   setElementProperty(view:ViewRef, elementIndex:number, propertyName:string, propertyValue:any):void {}
 
   /**
-   * Installs a nested component in another view.
-   * This will fail if no directive of type DYNAMIC_COMPONENT_TYPE
-   * was matched at this place in the template.
+   * Creates and installs a nested component in another view.
+   * Note: this might be a noop if we don't disassemble nested component views
+   * when caching views.
    */
-  setComponentView(view:ViewRef, elementIndex:number, nestedView:ViewRef):void {}
+  createComponentView(protoView:ProtoViewRef, elementIndex:number, nestedView:ViewRef):ViewRef {}
 
   /**
    * This will set the value for a text node.
@@ -212,19 +203,10 @@ export class Renderer {
 class EventDispatcher {
   /**
    * Called when an event was triggered for a on-* attribute on an element.
-   * @param {Map<string,Object>} locals Locals to be used to evaluate the
+   * @param {List<any>} locals Locals to be used to evaluate the
    *   event expressions
    */
   dispatchElementEvent(
-    view:ViewRef, elementIndex:number, eventName:string, locals:Map<string, object>
-  ) {}
-
-  /**
-   * Called when an event was triggered for a directive event.
-   * @param {Map<string,Object>} locals Locals to be used to evaluate the
-   *   event expressions
-   */
-  dispatchDirectiveEvent(
-    view:ViewRef, elementIndex:number, directiveIndex:number, eventName:string, locals:Map<string, object>
+    elementIndex:number, eventName:string, locals:List<any>
   ) {}
 }
