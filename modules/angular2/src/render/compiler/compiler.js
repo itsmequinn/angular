@@ -1,4 +1,4 @@
-import {PromiseWrapper} from 'angular2/src/facade/async';
+import {PromiseWrapper, Promise} from 'angular2/src/facade/async';
 import {List, ListWrapper} from 'angular2/src/facade/collection';
 import {BaseException} from 'angular2/src/facade/lang';
 

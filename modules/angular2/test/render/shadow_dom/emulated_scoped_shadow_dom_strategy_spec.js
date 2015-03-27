@@ -67,7 +67,7 @@ export function main() {
         elementBinders: [],
         instantiateInPlace: false
       });
-      var vf = new ViewFactory(0);
+      var vf = new ViewFactory(0, null);
       var view = vf.getView(pv);
 
       strategy.attachTemplate(host, view);
@@ -85,7 +85,7 @@ export function main() {
         elementBinders: [],
         instantiateInPlace: false
       });
-      var vf = new ViewFactory(0);
+      var vf = new ViewFactory(0, null);
       var view = vf.getView(pv);
 
       strategy.attachTemplate(host, view);

@@ -27,10 +27,13 @@ export function main() {
       loader = new TemplateLoader(xhr, new FakeUrlResolver());
     });
 
-    it('should load inline templates synchronously', () => {
+    it('should load inline templates', inject([AsyncTestCompleter], (async) => {
       var template = new Template({inline: 'inline template'});
-      expect(DOM.content(loader.load(template))).toHaveText('inline template');
-    });
+      loader.load(template).then( (el) => {
+        expect(DOM.content(el)).toHaveText('inline template');
+        async.done();
+      });
+    }));
 
     it('should load templates through XHR', inject([AsyncTestCompleter], (async) => {
       xhr.expect('base/foo', 'xhr template');

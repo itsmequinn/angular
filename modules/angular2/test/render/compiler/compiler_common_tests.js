@@ -39,36 +39,42 @@ export function runCompilerCommonTests() {
       return new Compiler(mockStepFactory, tplLoader);
     }
 
-    it('should run the steps and build the ProtoView of the root element', () => {
+    it('should run the steps and build the ProtoView of the root element', inject([AsyncTestCompleter], (async) => {
       var compiler = createCompiler((parent, current, control) => {
         current.inheritedProtoView.bindVariable('b', 'a');
       });
-      var protoView = compiler.compile(new Template({
+      compiler.compile(new Template({
         id: 'someComponent',
         inline: '<div></div>'
-      }));
-      expect(protoView.variableBindings).toEqual(MapWrapper.createFromStringMap({
-        'a': 'b'
-      }));
-    });
+      })).then( (protoView) => {
+        expect(protoView.variableBindings).toEqual(MapWrapper.createFromStringMap({
+          'a': 'b'
+        }));
+        async.done();
+      });
+    }));
 
-    it('should save the component id into the render ProtoView', () => {
+    it('should save the component id into the render ProtoView', inject([AsyncTestCompleter], (async) => {
       var compiler = createCompiler(EMPTY_STEP);
-      var protoView = compiler.compile(new Template({
+      compiler.compile(new Template({
         id: 'someId',
         inline: '<div></div>'
-      }));
-      expect(protoView.render.delegate.componentId).toBe('someId');
-    });
+      })).then( (protoView) => {
+        expect(protoView.render.delegate.componentId).toBe('someId');
+        async.done();
+      });
+    }));
 
-    it('should use the inline template and compile in sync', () => {
+    it('should use the inline template and compile in sync', inject([AsyncTestCompleter], (async) => {
       var compiler = createCompiler(EMPTY_STEP);
-      var protoView = compiler.compile(new Template({
+      compiler.compile(new Template({
         id: 'someId',
         inline: 'inline component'
-      }));
-      expect(DOM.getInnerHTML(protoView.render.delegate.element)).toEqual('inline component');
-    });
+      })).then( (protoView) => {
+        expect(DOM.getInnerHTML(protoView.render.delegate.element)).toEqual('inline component');
+        async.done();
+      });
+    }));
 
     it('should load url templates', inject([AsyncTestCompleter], (async) => {
       var urlData = MapWrapper.createFromStringMap({
@@ -165,7 +171,7 @@ class FakeTemplateLoader extends TemplateLoader {
 
   load(template: Template) {
     if (isPresent(template.inline)) {
-      return DOM.createTemplate(template.inline);
+      return PromiseWrapper.resolve(DOM.createTemplate(template.inline));
     }
 
     if (isPresent(template.absUrl)) {
