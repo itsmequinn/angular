@@ -80,6 +80,9 @@ export class ProtoView {
 }
 
 export class DirectiveMetadata {
+  static get COMPONENT_TYPE() { return 1; }
+  static get DYNAMIC_COMPONENT_TYPE() { return 2; }
+  static get VIEWPORT_TYPE() { return 2; }
   id:any;
   selector:string;
   compileChildren:boolean;
@@ -136,22 +139,35 @@ export class Renderer {
   compile(template:Template):Promise<ProtoView> {}
 
   /**
-   * Creates a root view
-   *
-   * Note: This returns the ViewRef synchronously also in
-   * a WebWorker scenario as the required id will be created on the client already.
+   * Creates a root view and all of its nested component views at once.
+   * See createView.
+   * @param {List<ProtoViewRef>} protoViewRefs
+   *    ProtoViews for the nested components in depth
+   *    first order, exlcluding dynamic components.
    */
-  createRootView(selectorOrElement):ViewRef {}
+  createRootView(selectorOrElement, protoViewRefs:List<ProtoViewRef>):List<ViewRef> {}
+
+  /**
+   * Creates a view and all of its nested component views at once.
+   *
+   * Note: We need to pass the nested component views here as well
+   * so we can cache them all in one chunk instead of splitting them up.
+   * Note: This returns a List of ViewRefs synchronously also in
+   * a WebWorker scenario as the required ids will be created on the client already.
+   *
+   * @param {List<ProtoViewRef>} protoViewRefs
+   *    ProtoViews for the nested components in depth
+   *    first order, exlcluding dynamic components.
+   */
+  createView(protoViewRefs:List<ProtoViewRef>):List<ViewRef> {}
 
   /**
    * Destroys a view and returns it back into the pool.
+   * Also destroys all views in ViewContainers transitively,
+   * but does not destroy nested component views.
+   * Removes the view from its previous viewContainer if needed.
    */
   destroyView(view:ViewRef):void {}
-
-  /**
-   * Creates a new View
-   */
-  createView(protoViewRef:api.ProtoViewRef):api.ViewRef {}
 
   /**
    * Inserts a detached view into a viewContainer.
@@ -171,11 +187,10 @@ export class Renderer {
   setElementProperty(view:ViewRef, elementIndex:number, propertyName:string, propertyValue:any):void {}
 
   /**
-   * Creates and installs a nested component in another view.
-   * Note: this might be a noop if we don't disassemble nested component views
-   * when caching views.
+   * Installs a nested component in another view.
+   * Note: only allowed if there is a dynamic component directive
    */
-  createComponentView(protoView:ProtoViewRef, elementIndex:number, nestedView:ViewRef):ViewRef {}
+  setDynamicComponentView(protoView:ProtoViewRef, elementIndex:number, viewRef:ViewRef):void {}
 
   /**
    * This will set the value for a text node.
@@ -188,7 +203,7 @@ export class Renderer {
    * Sets the dispatcher for all events that have been defined in the template or in directives
    * in the given view.
    */
-  setEventDispatcher(view:ViewRef, dispatcher:EventDispatcher) {}
+  setEventDispatcher(view:ViewRef, dispatcher:EventDispatcher):void {}
 
   /**
    * To be called at the end of the VmTurn so the API can buffer calls

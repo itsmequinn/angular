@@ -57,12 +57,14 @@ export class DirectRenderer extends api.Renderer {
     return this._compiler.compile(template);
   }
 
-  createRootView(selectorOrElement):api.ViewRef {
+  createRootView(selectorOrElement, protoViewRefs:List<ProtoViewRef>):List<ViewRef> {
+    // TODO: handle the child protoViews as well!
     return _wrapView(_viewFactory.getRootView(selectorOrElement));
   }
 
-  createView(protoViewRef:api.ProtoViewRef):api.ViewRef {
-    return _wrapView(_viewFactory.getView(_resolveProtoView(protoViewRef)));
+  createView(protoViewRefs:List<ProtoViewRef>):List<ViewRef> {
+    // TODO!
+    // return _wrapView(_viewFactory.getView(_resolveProtoView(protoViewRef)));
   }
 
   destroyView(viewRef:api.ViewRef) {
@@ -81,11 +83,11 @@ export class DirectRenderer extends api.Renderer {
     _resolveView(viewRef).setElementProperty(elementIndex, propertyName, propertyValue);
   }
 
-  createComponentView(viewRef:api.ViewRef, elementIndex:number, nestedProtoViewRef:api.ProtoViewRef):void {
+  setDynamicComponentView(viewRef:api.ViewRef, elementIndex:number, viewRef:api.ViewRef):void {
     _resolveView(viewRef).setComponentView(
       this._shadowDomStrategy,
-      this._viewFactory,
-      elementIndex, _resolveProtoView(nestedProtoViewRef)
+      elementIndex,
+      _resolveView(viewRef)
     );
   }
 

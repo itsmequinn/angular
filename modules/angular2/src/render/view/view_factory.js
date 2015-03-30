@@ -50,9 +50,6 @@ export class ViewFactory {
   }
 
   returnView(view:View) {
-    if (view.attached()) {
-      throw new BaseException('The view is still attached');
-    }
     if (view.hydrated()) {
       view.dehydrate();
     }

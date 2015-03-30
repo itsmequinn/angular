@@ -75,7 +75,6 @@ export class ViewContainer {
 
   insert(view, atIndex=-1): viewModule.View {
     this._checkHydrated();
-    view.attach();
     if (atIndex == -1) atIndex = this._views.length;
     ListWrapper.insert(this._views, atIndex, view);
     if (!view.hydrated()) {
@@ -100,7 +99,6 @@ export class ViewContainer {
    */
   detach(view:View) {
     this._checkHydrated();
-    view.detach();
     var atIndex = ListWrapper.indexOf(this._views, view);
     var detachedView = this.get(atIndex);
     ListWrapper.removeAt(this._views, atIndex);

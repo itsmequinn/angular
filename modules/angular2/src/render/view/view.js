@@ -31,7 +31,6 @@ export class View {
   contentTags: List<Content>;
   lightDoms: List<LightDom>;
   proto: ProtoView;
-  _attached: boolean;
   _hydrated: boolean;
   _eventDispatcher: EventDispatcher;
 
@@ -47,29 +46,10 @@ export class View {
     this.lightDoms = ListWrapper.createFixedSize(boundElements.length);
     this.componentChildViews = ListWrapper.createFixedSize(boundElements.length);
     this._hydrated = false;
-    this._attached = false;
   }
 
   hydrated() {
     return this._hydrated;
-  }
-
-  attached() {
-    return this._attached;
-  }
-
-  attach() {
-    if (this._attached) {
-      throw new BaseException('This view is already attached');
-    }
-    this._attached = true;
-  }
-
-  detach() {
-    if (!this._attached) {
-      throw new BaseException('This view is not attached');
-    }
-    this._attached = false;
   }
 
   setElementProperty(elementIndex:number, propertyName:string, value:Object) {
@@ -81,20 +61,11 @@ export class View {
     DOM.setText(this.boundTextNodes[textIndex], value);
   }
 
-  createComponentView(strategy: ShadowDomStrategy, viewFactory: ViewFactory,
-      elementIndex:number, childProtoView:ProtoView):View {
-    var previousComponent = this.componentChildViews[elementIndex];
-    if (isPresent(previousComponent)) {
-      if (previousComponent.proto !== childProtoView) {
-        throw new BaseException('There already is a child component view with a different ProtoView');
-      }
-      return;
-    }
-    var childView = viewFactory.create(childProtoView);
+  setComponentView(strategy: ShadowDomStrategy,
+      elementIndex:number, chilView:View) {
     var element = this.boundElements[elementIndex];
     var lightDom = strategy.constructLightDom(this, childView, element);
     strategy.attachTemplate(element, childView);
-    childView.attach();
     this.lightDoms[elementIndex] = lightDom;
     this.componentChildViews[elementIndex] = childView;
     if (this._hydrated) {
