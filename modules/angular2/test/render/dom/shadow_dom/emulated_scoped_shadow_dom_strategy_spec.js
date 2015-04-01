@@ -65,9 +65,9 @@ export function main() {
       var pv = new ProtoView({
         element: nodes,
         elementBinders: [],
-        instantiateInPlace: false
+        isRootView: false
       });
-      var vf = new ViewFactory(0, null);
+      var vf = new ViewFactory(0, null, null);
       var view = vf.getView(pv);
 
       strategy.attachTemplate(host, view);
@@ -83,9 +83,9 @@ export function main() {
       var pv = new ProtoView({
         element: nodes,
         elementBinders: [],
-        instantiateInPlace: false
+        isRootView: false
       });
-      var vf = new ViewFactory(0, null);
+      var vf = new ViewFactory(0, null, null);
       var view = vf.getView(pv);
 
       strategy.attachTemplate(host, view);

@@ -58,7 +58,7 @@ export class ViewSplitter extends CompileStep {
       if (DOM.isTemplateElement(current.element)) {
         if (!current.isViewRoot) {
           var viewRoot = new CompileElement(DOM.createTemplate(''));
-          viewRoot.inheritedProtoView = current.bindElement().bindNestedProtoView();
+          viewRoot.inheritedProtoView = current.bindElement().bindNestedProtoView(viewRoot.element);
           // viewRoot doesn't appear in the original template, so we associate
           // the current element description to get a more meaningful message in case of error
           viewRoot.elementDescription = current.elementDescription;
@@ -75,7 +75,7 @@ export class ViewSplitter extends CompileStep {
         // the current element description to get a more meaningful message in case of error
         newParent.elementDescription = current.elementDescription;
 
-        current.inheritedProtoView = newParent.bindElement().bindNestedProtoView();
+        current.inheritedProtoView = newParent.bindElement().bindNestedProtoView(current.element);
         current.inheritedElementBinder = null;
         current.isViewRoot = true;
         this._parseTemplateBindings(templateBindings, newParent);

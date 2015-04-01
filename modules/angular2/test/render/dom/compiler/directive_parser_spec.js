@@ -15,6 +15,10 @@ export function main() {
 
     beforeEach( () => {
       annotatedDirectives = [
+        someComponent,
+        someComponent2,
+        someViewport,
+        someViewport2,
         someDecorator,
         someDecoratorIgnoringChildren,
         someDecoratorWithProps,
@@ -117,8 +121,47 @@ export function main() {
         .toEqual('doIt()');
     });
 
-    it('should not throw any errors if there is no element property bindings for a directive ' +
-        'property binding', () => {
+    describe('viewport directives', () => {
+      it('should not allow multiple viewport directives on the same element', () => {
+        expect( () => {
+          process(
+            el('<template some-vp some-vp2></template>')
+          );
+        }).toThrowError('Only one viewport directive is allowed per element - check <template some-vp some-vp2>');
+      });
+
+      it('should not allow viewport directives on non <template> elements', () => {
+        expect( () => {
+          process(
+            el('<div some-vp></div>')
+          );
+        }).toThrowError('Viewport directives need to be placed on <template> elements or elements with template attribute - check <div some-vp>');
+      });
+    });
+
+    describe('component directives', () => {
+      it('should save the component id', () => {
+        var results = process(
+          el('<div some-comp></div>')
+        );
+        expect(results[0].componentId).toEqual('someComponent');
+      });
+
+      it('should not allow multiple component directives on the same element', () => {
+         expect( () => {
+           process(
+             el('<div some-comp some-comp2></div>')
+           );
+         }).toThrowError('Only one component directive is allowed per element - check <div some-comp some-comp2>');
+      });
+
+      it('should not allow component directives on <template> elements', () => {
+         expect( () => {
+           process(
+             el('<template some-comp></template>')
+           );
+         }).toThrowError('Only template directives are allowed on template elements - check <template some-comp>');
+       });
     });
 
   });
@@ -134,6 +177,30 @@ class MockStep extends CompileStep {
     this.processClosure(parent, current, control);
   }
 }
+
+var someComponent = new DirectiveMetadata({
+  selector: '[some-comp]',
+  id: 'someComponent',
+  type: DirectiveMetadata.COMPONENT_TYPE
+});
+
+var someComponent2 = new DirectiveMetadata({
+  selector: '[some-comp2]',
+  id: 'someComponent2',
+  type: DirectiveMetadata.COMPONENT_TYPE
+});
+
+var someViewport = new DirectiveMetadata({
+  selector: '[some-vp]',
+  id: 'someViewport',
+  type: DirectiveMetadata.VIEWPORT_TYPE
+});
+
+var someViewport2 = new DirectiveMetadata({
+  selector: '[some-vp2]',
+  id: 'someViewport2',
+  type: DirectiveMetadata.VIEWPORT_TYPE
+});
 
 var someDecorator = new DirectiveMetadata({
   selector: '[some-decor]'

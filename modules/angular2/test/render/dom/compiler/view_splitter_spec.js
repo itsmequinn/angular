@@ -56,6 +56,7 @@ export function main() {
         var results = createPipeline().process(rootElement);
         expect(results[2].inheritedProtoView).not.toBe(null);
         expect(results[2].inheritedProtoView).toBe(results[1].inheritedElementBinder.nestedProtoView);
+        expect(DOM.getOuterHTML(results[2].inheritedProtoView.rootElement)).toEqual('<template>a</template>');
       });
 
     });
@@ -135,6 +136,7 @@ export function main() {
         var results = createPipeline().process(rootElement);
         expect(results[2].inheritedProtoView).not.toBe(null);
         expect(results[2].inheritedProtoView).toBe(results[1].inheritedElementBinder.nestedProtoView);
+        expect(DOM.getOuterHTML(results[2].inheritedProtoView.rootElement)).toEqual('<span template=""></span>');
       });
 
     });
@@ -214,6 +216,7 @@ export function main() {
         var results = createPipeline().process(rootElement);
         expect(results[2].inheritedProtoView).not.toBe(null);
         expect(results[2].inheritedProtoView).toBe(results[1].inheritedElementBinder.nestedProtoView);
+        expect(DOM.getOuterHTML(results[2].inheritedProtoView.rootElement)).toEqual('<span *foo=""></span>');
       });
 
     });

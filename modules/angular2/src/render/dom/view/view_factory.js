@@ -13,8 +13,6 @@ import {ProtoView} from './proto_view';
 import {View} from './view';
 import {NG_BINDING_CLASS_SELECTOR, NG_BINDING_CLASS} from '../util';
 
-import {ProtoViewBuilder} from './proto_view_builder';
-
 export var VIEW_POOL_CAPACITY = new OpaqueToken('ViewFactory.viewPoolCapacity');
 
 
@@ -22,31 +20,29 @@ export class ViewFactory {
   _poolCapacity:number;
   _pooledViews:List<View>;
   _eventManager:EventManager;
+  _shadowDomStrategy:ShadowDomStrategy;
 
-  constructor(capacity, eventManager) {
+  constructor(capacity, eventManager, shadowDomStrategy) {
     this._poolCapacity = capacity;
     this._pooledViews = ListWrapper.create();
     this._eventManager = eventManager;
+    this._shadowDomStrategy = shadowDomStrategy;
   }
 
-  getView(protoView:ProtoView): View {
+  getView(protoView:ProtoView):View {
     // TODO(tbosch): benchmark this scanning of views and maybe
     // replace it with a fancy LRU Map/List combination...
+    var view;
     for (var i=0; i<this._pooledViews.length; i++) {
       var pooledView = this._pooledViews[i];
-      if (pooledView.protoView === protoView) {
-        return ListWrapper.removeAt(this._pooledViews, i);
+      if (pooledView.proto === protoView) {
+        view = ListWrapper.removeAt(this._pooledViews, i);
       }
     }
-    return this._createView(protoView);
-  }
-
-  getRootView(elementOrSelector) {
-    var element = elementOrSelector; // TODO: select the element if it is not a real element...
-    var rootProtoViewBuilder = new ProtoViewBuilder(element);
-    rootProtoViewBuilder.setInstantiateInPlace(true);
-    rootProtoViewBuilder.bindElement(element, 'root element');
-    return this.getView(rootProtoViewBuilder.build().render);
+    if (isBlank(view)) {
+      view = this._createView(protoView);
+    }
+    return view;
   }
 
   returnView(view:View) {
@@ -60,7 +56,7 @@ export class ViewFactory {
   }
 
   _createView(protoView:ProtoView): View {
-    var rootElementClone = protoView.instantiateInPlace ? protoView.element : DOM.importIntoDoc(protoView.element);
+    var rootElementClone = protoView.isRootView ? protoView.element : DOM.importIntoDoc(protoView.element);
     var elementsWithBindingsDynamic;
     if (protoView.isTemplateElement) {
       elementsWithBindingsDynamic = DOM.querySelectorAll(DOM.content(rootElementClone), NG_BINDING_CLASS_SELECTOR);
@@ -111,7 +107,7 @@ export class ViewFactory {
 
       // viewContainers
       var viewContainer = null;
-      if (isPresent(binder.nestedProtoView)) {
+      if (isBlank(binder.componentId) && isPresent(binder.nestedProtoView)) {
         viewContainer = new ViewContainer(this, element);
       }
       viewContainers[binderIdx] = viewContainer;
@@ -122,13 +118,6 @@ export class ViewFactory {
         contentTag = new Content(element, binder.contentTagSelector);
       }
       contentTags[binderIdx] = contentTag;
-
-      // events
-      if (isPresent(binder.eventLocals)) {
-        MapWrapper.forEach(binder.eventLocals, (ast, eventName) => {
-          this._createEventListener(element, binderIdx, eventName, ast);
-        });
-      }
     }
 
     var view = new View(
@@ -136,12 +125,34 @@ export class ViewFactory {
       boundTextNodes, boundElements, viewContainers, contentTags
     );
 
+    for (var binderIdx = 0; binderIdx < binders.length; binderIdx++) {
+      var binder = binders[binderIdx];
+      var element = boundElements[binderIdx];
+
+      // static child components
+      if (isPresent(binder.componentId) && isPresent(binder.nestedProtoView)) {
+        var childView = this._createView(binder.nestedProtoView);
+        view.setComponentView(this._shadowDomStrategy, binderIdx, childView);
+      }
+
+      // events
+      if (isPresent(binder.eventLocals)) {
+        ListWrapper.forEach(binder.eventNames, (eventName) => {
+          this._createEventListener(view, element, binderIdx, eventName, binder.eventLocals);
+        });
+      }
+    }
+
+    if (protoView.isRootView) {
+      view.hydrate(null);
+    }
+
     return view;
   }
 
-  _createEventListener(element, elementIndex, eventName, localsAst) {
-    eventManager.addEventListener(element, eventName, (event) => {
-      view.eventDispatcher.dispatch(elementIndex, eventName, localsAst.eval(event, {}));
+  _createEventListener(view, element, elementIndex, eventName, eventLocals) {
+    this._eventManager.addEventListener(element, eventName, (event) => {
+      view.dispatchEvent(elementIndex, eventName, event);
     });
   }
 }

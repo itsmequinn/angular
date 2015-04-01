@@ -3,6 +3,7 @@ import {Promise} from 'angular2/src/facade/async';
 import {ListWrapper, MapWrapper, Map, StringMapWrapper, List} from 'angular2/src/facade/collection';
 import {int, isPresent, isBlank, BaseException} from 'angular2/src/facade/lang';
 import {reflector} from 'angular2/src/reflection/reflection';
+import {Locals} from 'angular2/change_detection';
 
 import {ViewContainer} from './view_container';
 import {ProtoView} from './proto_view';
@@ -62,7 +63,7 @@ export class View {
   }
 
   setComponentView(strategy: ShadowDomStrategy,
-      elementIndex:number, chilView:View) {
+      elementIndex:number, childView:View) {
     var element = this.boundElements[elementIndex];
     var lightDom = strategy.constructLightDom(this, childView, element);
     strategy.attachTemplate(element, childView);
@@ -156,5 +157,14 @@ export class View {
 
   setEventDispatcher(dispatcher:EventDispatcher) {
     this._eventDispatcher = dispatcher;
+  }
+
+  dispatchEvent(elementIndex, eventName, event) {
+    if (isPresent(this._eventDispatcher)) {
+      var evalLocals = MapWrapper.create();
+      MapWrapper.set(evalLocals, '$event', event);
+      var localValues = this.proto.elementBinders[elementIndex].eventLocals.eval(null, new Locals(null, evalLocals));
+      this._eventDispatcher.dispatchEvent(elementIndex, eventName, localValues);
+    }
   }
 }

@@ -97,9 +97,8 @@ export class ViewContainer {
    * The method can be used together with insert to implement a view move, i.e.
    * moving the dom nodes while the directives in the view stay intact.
    */
-  detach(view:View) {
+  detach(atIndex:number) {
     this._checkHydrated();
-    var atIndex = ListWrapper.indexOf(this._views, view);
     var detachedView = this.get(atIndex);
     ListWrapper.removeAt(this._views, atIndex);
     if (isBlank(this._lightDom)) {

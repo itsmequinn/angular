@@ -16,7 +16,7 @@ export function main() {
         new MockStep((parent, current, control) => {
           current.ignoreBindings = ignoreBindings;
           if (hasNestedProtoView) {
-            current.bindElement().bindNestedProtoView();
+            current.bindElement().bindNestedProtoView(el('<template></template>'));
           }
         }),
         new PropertyBindingParser(new Parser(new Lexer()))]);

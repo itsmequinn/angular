@@ -2,7 +2,9 @@ import {isPresent} from 'angular2/src/facade/lang';
 import {ListWrapper, MapWrapper, Set, SetWrapper} from 'angular2/src/facade/collection';
 import {DOM} from 'angular2/src/dom/dom_adapter';
 
-import {ASTWithSource, AST, AstTransformer} from 'angular2/change_detection';
+import {
+  ASTWithSource, AST, AstTransformer, AccessMember, LiteralArray, ImplicitReceiver
+} from 'angular2/change_detection';
 import {SetterFn} from 'angular2/src/reflection/types';
 
 import {ProtoView} from './proto_view';
@@ -18,14 +20,14 @@ export class ProtoViewBuilder {
   rootElement;
   variableBindings: Map<string, string>;
   elements:List<ElementBinderBuilder>;
-  instantiateInPlace:boolean;
+  isRootView:boolean;
   componentId:string;
   propertySetters:Set<string>;
 
   constructor(rootElement) {
     this.rootElement = rootElement;
     this.elements = [];
-    this.instantiateInPlace = false;
+    this.isRootView = false;
     this.variableBindings = MapWrapper.create();
     this.componentId = null;
     this.propertySetters = new Set();
@@ -48,8 +50,8 @@ export class ProtoViewBuilder {
     MapWrapper.set(this.variableBindings, value, name);
   }
 
-  setInstantiateInPlace(value) {
-    this.instantiateInPlace = value;
+  setIsRootView(value) {
+    this.isRootView = value;
   }
 
   setComponentId(componentId) {
@@ -71,7 +73,7 @@ export class ProtoViewBuilder {
         return new api.DirectiveBinder({
           directiveIndex: db.directiveIndex,
           propertyBindings: db.propertyBindings,
-          eventBindings: this._splitEventAstIntoLocals(db.eventBindings, eventLocalsAstSplitter)
+          eventBindings: eventLocalsAstSplitter.splitEventAstIntoLocals(db.eventBindings)
         });
       });
       MapWrapper.forEach(ebb.propertySetters, (setter, propertyName) => {
@@ -87,21 +89,24 @@ export class ProtoViewBuilder {
         directives: apiDirectiveBinders,
         nestedProtoView: nestedProtoView,
         propertyBindings: ebb.propertyBindings, variableBindings: ebb.variableBindings,
-        eventBindings: this._splitEventAstIntoLocals(ebb.eventBindings, eventLocalsAstSplitter),
+        eventBindings: eventLocalsAstSplitter.splitEventAstIntoLocals(ebb.eventBindings),
         textBindings: ebb.textBindings
       }));
       ListWrapper.push(renderElementBinders, new ElementBinder({
         textNodeIndices: ebb.textBindingIndices,
         contentTagSelector: ebb.contentTagSelector,
-        nestedProtoView: isPresent(nestedProtoView) ? nestedProtoView.render : null,
-        eventLocals: eventLocalsAstSplitter.locals
+        parentIndex: parentIndex,
+        nestedProtoView: isPresent(nestedProtoView) ? nestedProtoView.render.delegate : null,
+        componentId: ebb.componentId,
+        eventLocals: eventLocalsAstSplitter.buildEventLocals(),
+        eventNames: eventLocalsAstSplitter.buildEventNames()
       }));
     });
     return new api.ProtoView({
       render: new directDomRenderer.DirectDomProtoViewRef(new ProtoView({
         element: this.rootElement,
         elementBinders: renderElementBinders,
-        instantiateInPlace: instantiateInPlace,
+        isRootView: isRootView,
         componentId: this.componentId,
         propertySetters: propertySetters
       })),
@@ -110,11 +115,12 @@ export class ProtoViewBuilder {
     });
   }
 
-  _splitEventAstIntoLocals(eventBindings:Map<string, ASTWithSource>, eventLocalsAstSplitter):Map<string, ASTWithSource> {
+  _splitEventAstIntoLocals(eventBindings:Map<string, ASTWithSource>, eventLocalsAstSplitter, eventNames):Map<string, ASTWithSource> {
     if (isPresent(eventBindings)) {
       var result = MapWrapper.create();
       MapWrapper.forEach(eventBindings, (astWithSource, eventName) => {
         MapWrapper.set(result, eventName, astWithSource.ast.visit(eventLocalsAstSplitter));
+        ListWrapper.push(eventNames, eventName);
       });
       return result;
     }
@@ -138,6 +144,7 @@ export class ElementBinderBuilder {
   textBindings: List<ASTWithSource>;
   contentTagSelector:string;
   propertySetters: Map<string, SetterFn>;
+  componentId: string;
 
   constructor(index, element, description) {
     this.element = element;
@@ -155,6 +162,7 @@ export class ElementBinderBuilder {
     this.textBindingIndices = [];
     this.contentTagSelector = null;
     this.propertySetters = MapWrapper.create();
+    this.componentId = null;
   }
 
   setParent(parent:ElementBinderBuilder, distanceToParent):ElementBinderBuilder {
@@ -180,11 +188,11 @@ export class ElementBinderBuilder {
     return directive;
   }
 
-  bindNestedProtoView():ProtoViewBuilder {
+  bindNestedProtoView(rootElement):ProtoViewBuilder {
     if (isPresent(nestedProtoView)) {
       throw new BaseException('Only one nested view per element is allowed');
     }
-    this.nestedProtoView = new ProtoViewBuilder(this.element);
+    this.nestedProtoView = new ProtoViewBuilder(rootElement);
     return this.nestedProtoView;
   }
 
@@ -193,7 +201,6 @@ export class ElementBinderBuilder {
   }
 
   bindVariable(name, value) {
-
     // When current is a view root, the variable bindings are set to the *nested* proto view.
     // The root view conceptually signifies a new "block scope" (the nested view), to which
     // the variables are bound.
@@ -225,6 +232,10 @@ export class ElementBinderBuilder {
   bindPropertySetter(propertyName, setter) {
     MapWrapper.set(this.propertySetters, propertyName, setter);
   }
+
+  setComponentId(componentId:string) {
+    this.componentId = componentId;
+  }
 }
 
 export class DirectiveBuilder {
@@ -255,17 +266,51 @@ export class DirectiveBuilder {
 
 export class EventLocalsAstSplitter extends AstTransformer {
   locals:List<AST>;
+  eventNames:List<string>;
+  _implicitReceiver:AST;
 
   constructor() {
     this.locals = [];
+    this.eventNames = [];
+    this._implicitReceiver = new ImplicitReceiver();
+  }
+
+  splitEventAstIntoLocals(eventBindings:Map<string, ASTWithSource>):Map<string, ASTWithSource> {
+    if (isPresent(eventBindings)) {
+      var result = MapWrapper.create();
+      MapWrapper.forEach(eventBindings, (astWithSource, eventName) => {
+        MapWrapper.set(result, eventName, astWithSource.ast.visit(this));
+        ListWrapper.push(this.eventNames, eventName);
+      });
+      return result;
+    }
+    return null;
   }
 
   visitAccessMember(ast:AccessMember) {
-    if (ast.name === '$target') {
+    var isEventAccess = false;
+    var current = ast;
+    while (!isEventAccess && (current instanceof AccessMember)) {
+      if (current.name == '$event') {
+        isEventAccess = true;
+      }
+      current = current.receiver;
+    }
+
+    if (isEventAccess) {
       ListWrapper.push(this.locals, ast);
-      return new AccessMember('$eventProps', `${this.locals.length - 1}`);
+      var index = this.locals.length - 1;
+      return new AccessMember(this._implicitReceiver, `${index}`, (arr) => arr[index], null);
     } else {
       return ast;
     }
+  }
+
+  buildEventLocals() {
+    return new LiteralArray(this.locals);
+  }
+
+  buildEventNames() {
+    return this.eventNames;
   }
 }

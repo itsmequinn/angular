@@ -80,8 +80,8 @@ export class ProtoView {
 }
 
 export class DirectiveMetadata {
+  static get DECORATOR_TYPE() { return 0; }
   static get COMPONENT_TYPE() { return 1; }
-  static get DYNAMIC_COMPONENT_TYPE() { return 2; }
   static get VIEWPORT_TYPE() { return 2; }
   id:any;
   selector:string;
@@ -139,33 +139,28 @@ export class Renderer {
   compile(template:Template):Promise<ProtoView> {}
 
   /**
-   * Creates a root view and all of its nested component views at once.
-   * See createView.
+   * Sets the nested components that should always be instantiated as well
+   * when this protoView is instantiated.
+   * Will internally create a new ProtoView
    * @param {List<ProtoViewRef>} protoViewRefs
-   *    ProtoViews for the nested components in depth
-   *    first order, exlcluding dynamic components.
+   *    ProtoView for every bound element of the given protoView
    */
-  createRootView(selectorOrElement, protoViewRefs:List<ProtoViewRef>):List<ViewRef> {}
+  mergeChildComponentProtoViews(protoViewRef:ProtoViewRef, protoViewRefs:List<ProtoViewRef>):ProtoViewRef {}
 
   /**
-   * Creates a view and all of its nested component views at once.
-   *
-   * Note: We need to pass the nested component views here as well
-   * so we can cache them all in one chunk instead of splitting them up.
-   * Note: This returns a List of ViewRefs synchronously also in
-   * a WebWorker scenario as the required ids will be created on the client already.
-   *
-   * @param {List<ProtoViewRef>} protoViewRefs
-   *    ProtoViews for the nested components in depth
-   *    first order, exlcluding dynamic components.
+   * Creats a ProtoView that will create a root view for the given element,
+   * i.e. it will not clone the element but only attach other proto views to it.
    */
-  createView(protoViewRefs:List<ProtoViewRef>):List<ViewRef> {}
+  createRootProtoView(selectorOrElement):ProtoViewRef {}
+
+  /**
+   * Creates a view and all of its nested child components.
+   * @return {List<ViewRef>} depth first list of nested child components
+   */
+  createView(protoView:ProtoViewRef):List<ViewRef> {}
 
   /**
    * Destroys a view and returns it back into the pool.
-   * Also destroys all views in ViewContainers transitively,
-   * but does not destroy nested component views.
-   * Removes the view from its previous viewContainer if needed.
    */
   destroyView(view:ViewRef):void {}
 
@@ -176,8 +171,10 @@ export class Renderer {
 
   /**
    * Detaches a view from a container so that it can be inserted later on
+   * Note: We are not return the ViewRef as this can't be done in sync,
+   * so we assume that the caller knows which view is in which spot...
    */
-  detachViewFromContainer(vcRef:ViewContainerRef, view:ViewRef):void {}
+  detachViewFromContainer(vcRef:ViewContainerRef, atIndex:number):void {}
 
   /**
    * Sets a property on an element.
@@ -190,7 +187,7 @@ export class Renderer {
    * Installs a nested component in another view.
    * Note: only allowed if there is a dynamic component directive
    */
-  setDynamicComponentView(protoView:ProtoViewRef, elementIndex:number, viewRef:ViewRef):void {}
+  setDynamicComponentView(view:ViewRef, elementIndex:number, nestedViewRef:ViewRef):void {}
 
   /**
    * This will set the value for a text node.
@@ -203,7 +200,7 @@ export class Renderer {
    * Sets the dispatcher for all events that have been defined in the template or in directives
    * in the given view.
    */
-  setEventDispatcher(view:ViewRef, dispatcher:EventDispatcher):void {}
+  setEventDispatcher(viewRef:ViewRef, dispatcher:EventDispatcher):void {}
 
   /**
    * To be called at the end of the VmTurn so the API can buffer calls
@@ -221,7 +218,7 @@ class EventDispatcher {
    * @param {List<any>} locals Locals to be used to evaluate the
    *   event expressions
    */
-  dispatchElementEvent(
+  dispatchEvent(
     elementIndex:number, eventName:string, locals:List<any>
   ) {}
 }
